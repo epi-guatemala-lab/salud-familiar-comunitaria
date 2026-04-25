@@ -1,0 +1,36 @@
+// Constantes globales SFyC.
+
+export const ROLES = {
+  ADMIN: 'admin',
+  DOCENTE: 'docente',
+  ESTUDIANTE: 'estudiante',
+};
+
+export const TIPO_PREGUNTA = {
+  MCQ: 'MCQ',
+  MULTIPLE: 'MULTIPLE',
+  VF: 'VF',
+  ABIERTA: 'ABIERTA',
+};
+
+export const ESCALA_TIPO = {
+  LIKERT_1_4: 'LIKERT_1_4',
+  SEMAFORO_2_3_4: 'SEMAFORO_2_3_4',
+};
+
+export const STORAGE_KEYS = {
+  TOKEN: 'sfyc_token',
+  USER: 'sfyc_user',
+  OFFLINE_QUEUE: 'sfyc_offline_queue',
+  ENCUESTA_DRAFT: 'sfyc_encuesta_draft',
+  ENCUESTA_UUID: 'sfyc_encuesta_uuid',
+  UNIDADES_CACHE: 'sfyc_unidades_cache_v1',
+};
+
+// Eventos custom para coordinar logout / auth-invalidation entre listeners.
+export const EVENTS = {
+  AUTH_INVALIDATED: 'sfyc:auth:invalidated',
+  TOAST: 'sfyc:toast',
+};
+
+export const RUBRICAS_DISPONIBLES = ['GENERICA', 'GYO', 'PEDIATRIA'];

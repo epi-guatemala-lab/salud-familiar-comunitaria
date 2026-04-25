@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 80" role="img" aria-label="Salud Familiar y Comunitaria IGSS">
+  <g transform="translate(0,8)">
+    <circle cx="32" cy="30" r="26" fill="none" stroke="#2E7D32" stroke-width="3"/>
+    <path d="M22 22 q-4 4 0 8 q4 4 10 8 q6 -4 10 -8 q4 -4 0 -8 q-4 -4 -10 0 q-6 -4 -10 0 z" fill="#C41E24"/>
+    <circle cx="26" cy="36" r="3" fill="#fff" stroke="#2E7D32" stroke-width="1"/>
+    <circle cx="38" cy="36" r="3" fill="#fff" stroke="#2E7D32" stroke-width="1"/>
+  </g>
+  <g font-family="Inter, Roboto, sans-serif" fill="#1B5E20">
+    <text x="72" y="30" font-size="14" font-weight="400">Salud</text>
+    <text x="72" y="46" font-size="16" font-weight="700">Familiar y</text>
+    <text x="72" y="62" font-size="14" font-weight="400">Comunitaria</text>
+    <text x="72" y="76" font-size="10" font-weight="700" fill="#C41E24">IGSS</text>
+  </g>
+</svg>
