@@ -55,14 +55,29 @@ export default function EvaluacionDetalle() {
       valor: Number(d.porcentaje) || 0,
     })) || [];
 
-  const handleDescargarPDF = () => {
-    // El backend genera el PDF; aquí solo abrimos en nueva pestaña.
-    const token = localStorage.getItem('sfyc_token');
-    const baseUrl = import.meta.env.VITE_API_URL || '/api';
-    window.open(
-      `${baseUrl}/docente/evaluaciones/${id}/pdf?token=${encodeURIComponent(token || '')}`,
-      '_blank',
-    );
+  const handleDescargarPDF = async () => {
+    // Fetch con Authorization header (NO token en URL — leak vía referer/logs).
+    // Convertir blob a object URL y triggear descarga.
+    try {
+      const token = localStorage.getItem('sfyc_token');
+      const baseUrl = import.meta.env.VITE_API_URL || '/api';
+      const res = await fetch(
+        `${baseUrl}/docente/evaluaciones/${id}/pdf`,
+        { headers: { Authorization: `Bearer ${token || ''}` } },
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `evaluacion_${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      alert(`Error descargando PDF: ${e.message}`);
+    }
   };
 
   return (
