@@ -71,13 +71,33 @@ async function request(method, path, body, opts = {}) {
 
       if (!res.ok) {
         clearTimeout(timeoutId);
-        throw new ApiError(
-          data.detail || data.message || `Error ${res.status}`,
-          res.status,
-          data.code,
-          data.field,
-          data.context
-        );
+        // FastAPI envuelve los errores en {detail: ...}. `detail` puede ser:
+        //   - string: "mensaje plano"
+        //   - objeto: {detail, code, field, context} (formato custom de SFyC backend)
+        //   - array: [{loc, msg, type}] (validación Pydantic)
+        // Extraemos mensaje + metadata sin romper ninguno.
+        const d = data.detail;
+        let message, code, field, context;
+        if (typeof d === 'string') {
+          message = d;
+        } else if (Array.isArray(d) && d.length > 0) {
+          // Pydantic validation errors
+          const first = d[0];
+          message = first.msg || first.message || `Error ${res.status}`;
+          field = Array.isArray(first.loc) ? first.loc.slice(-1)[0] : undefined;
+        } else if (d && typeof d === 'object') {
+          message = d.detail || d.message || d.error || `Error ${res.status}`;
+          code = d.code;
+          field = d.field;
+          context = d.context;
+        } else {
+          message = data.message || `Error ${res.status}`;
+        }
+        // Top-level también puede tener code/field si el backend los pone fuera de detail
+        code = code || data.code;
+        field = field || data.field;
+        context = context || data.context;
+        throw new ApiError(message, res.status, code, field, context);
       }
       clearTimeout(timeoutId);
       return data;
