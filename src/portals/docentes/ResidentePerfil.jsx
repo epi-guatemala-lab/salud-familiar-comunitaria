@@ -43,7 +43,7 @@ export default function ResidentePerfil() {
   if (error) {
     return (
       <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-800">
-        Error: {error.message}{' '}
+        Error: {error?.message || 'No se pudo conectar al servidor'}{' '}
         <Link to="/docentes/residentes" className="underline ml-2">
           Volver
         </Link>

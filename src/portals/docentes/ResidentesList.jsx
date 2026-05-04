@@ -75,7 +75,7 @@ export default function ResidentesList() {
 
       {error && (
         <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-800 flex items-center justify-between">
-          <span>Error al cargar: {error.message}</span>
+          <span>Error al cargar: {error?.message || 'No se pudo conectar al servidor'}</span>
           <button
             type="button"
             className="text-red-700 underline hover:text-red-900"

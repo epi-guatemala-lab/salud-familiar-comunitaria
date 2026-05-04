@@ -20,8 +20,11 @@ export default function RadioGroup({
       )}
       <div className={`flex ${inline ? 'flex-wrap gap-4' : 'flex-col gap-2'}`}>
         {options.map((opt) => {
-          const v = opt.value ?? opt;
-          const lbl = opt.label ?? opt;
+          // Soporta los 3 shapes del codebase: {value,label}, {id,label}, string/number plano.
+          // Si opt es objeto sin value/id, RadioGroup mandaba el OBJETO entero como value
+          // → backend rechazaba con "Input should be 'X' or 'Y'". Ahora siempre string.
+          const v = opt && typeof opt === 'object' ? (opt.value ?? opt.id ?? '') : opt;
+          const lbl = opt && typeof opt === 'object' ? (opt.label ?? opt.title ?? String(v)) : opt;
           return (
             <Radio
               key={v}

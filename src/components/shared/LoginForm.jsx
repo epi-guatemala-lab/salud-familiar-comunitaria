@@ -15,7 +15,7 @@ export default function LoginForm({ rolEsperado, onSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!username || !password) {
-      setError('Ingrese usuario y contrasena');
+      setError('Ingrese usuario y contraseña');
       return;
     }
     setSubmitting(true);
@@ -28,7 +28,7 @@ export default function LoginForm({ rolEsperado, onSuccess }) {
       }
       onSuccess?.(res);
     } catch (err) {
-      const msg = err.message || 'Error al iniciar sesion';
+      const msg = err?.message || 'Error al iniciar sesión';
       setError(msg);
       toast.error(msg);
     } finally {
@@ -50,7 +50,7 @@ export default function LoginForm({ rolEsperado, onSuccess }) {
       <Input
         name="password"
         type="password"
-        label="Contrasena"
+        label="Contraseña"
         autoComplete="current-password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
@@ -62,7 +62,7 @@ export default function LoginForm({ rolEsperado, onSuccess }) {
         </div>
       )}
       <Button type="submit" loading={submitting} fullWidth>
-        Iniciar sesion
+        Iniciar sesión
       </Button>
     </form>
   );

@@ -121,7 +121,7 @@ export default function SatisfaccionPage() {
       const firstField = errs.unidad ? 'unidad-anchor' : Object.keys(errs)[0];
       const el = document.getElementById(firstField);
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      toast.warning('Por favor responda todos los items obligatorios.');
+      toast.warning('Por favor responda todos los ítems obligatorios.');
       return;
     }
 
@@ -132,7 +132,7 @@ export default function SatisfaccionPage() {
     try {
       if (!isOnline) {
         await enqueue('/api/encuesta', payload);
-        toast.success('Encuesta guardada. Se enviara cuando vuelva la conexion.');
+        toast.success('Encuesta guardada. Se enviará cuando vuelva la conexión.');
         finishSuccess(true);
         return;
       }
@@ -145,14 +145,14 @@ export default function SatisfaccionPage() {
       if (status === 0 || status >= 500 || err?.networkError) {
         try {
           await enqueue('/api/encuesta', payload);
-          toast.warning('Sin conexion. Se enviara automaticamente al recuperar internet.');
+          toast.warning('Sin conexión. Se enviará automáticamente al recuperar internet.');
           finishSuccess(true);
           return;
         } catch (_) {
           /* fallthrough */
         }
       }
-      // 4xx → mostrar error de validacion.
+      // 4xx → mostrar error de validación.
       const msg = err?.message || 'Error al enviar la encuesta';
       setErrors({ _global: msg });
       if (err?.field) setErrors((prev) => ({ ...prev, [err.field]: msg }));
@@ -163,7 +163,7 @@ export default function SatisfaccionPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-igss-50">
-      <Header showSfycLogo portal="Encuesta de Satisfaccion" />
+      <Header showSfycLogo portal="Encuesta de Satisfacción" />
 
       <main className="flex-1 max-w-2xl mx-auto px-4 py-6 w-full">
         <div className="mb-4">
@@ -253,7 +253,7 @@ export default function SatisfaccionPage() {
           <section className="bg-white rounded-lg p-4 shadow">
             <h2 className="font-semibold text-igss-700 mb-3">{M.encuesta.seccionProfesionales}</h2>
             <p className="text-xs text-gray-600 mb-3">
-              Si no recibio atencion de alguno de estos profesionales, marque "No aplica".
+              Si no recibió atención de alguno de estos profesionales, marque "No aplica".
             </p>
             <div className="space-y-1">
               {PROFESIONALES_6.map((p) => (
@@ -289,7 +289,7 @@ export default function SatisfaccionPage() {
           {/* Resumen / KPI vivo */}
           {respondidos === ITEMS_18.length && kpiLocal.promedio != null && (
             <div className="bg-igss-100 border border-igss-300 text-igss-900 p-3 rounded-md text-sm">
-              ✓ Respondio todos los items. Promedio actual: <b>{kpiLocal.promedio.toFixed(2)}</b> / 5.
+              ✓ Respondió todos los ítems. Promedio actual: <b>{kpiLocal.promedio.toFixed(2)}</b> / 5.
             </div>
           )}
 

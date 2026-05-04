@@ -9,11 +9,11 @@ export default function Footer() {
         <span>© {new Date().getFullYear()} IGSS — Salud Familiar y Comunitaria</span>
         <span className="font-mono text-gray-400">v{String(VITE_VERSION).slice(0, 7)}</span>
         {!isOnline && (
-          <span className="text-yellow-700 font-semibold">⚠ Sin conexion</span>
+          <span className="text-yellow-700 font-semibold">⚠ Sin conexión</span>
         )}
         {count > 0 && (
           <span className="text-igss-gold-dark font-semibold">
-            {count} envio{count > 1 ? 's' : ''} pendiente{count > 1 ? 's' : ''}
+            {count} envío{count > 1 ? 's' : ''} pendiente{count > 1 ? 's' : ''}
           </span>
         )}
       </div>

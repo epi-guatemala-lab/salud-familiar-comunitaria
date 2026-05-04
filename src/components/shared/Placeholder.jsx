@@ -7,26 +7,26 @@ const PORTAL_INFO = {
     title: 'Portal de Docentes',
     emoji: '👨‍⚕️',
     description:
-      'Gestion de evaluaciones, examenes y residentes. Esta seccion esta en construccion.',
+      'Gestión de evaluaciones, exámenes y residentes. Esta sección está en construcción.',
   },
   estudiantes: {
     title: 'Portal de Estudiantes',
     emoji: '🎓',
     description:
-      'Examenes, calificaciones y boletas. Esta seccion esta en construccion.',
+      'Exámenes, calificaciones y boletas. Esta sección está en construcción.',
   },
   satisfaccion: {
-    title: 'Encuesta de Satisfaccion',
+    title: 'Encuesta de Satisfacción',
     emoji: '📋',
-    description: 'Esta seccion esta en construccion.',
+    description: 'Esta sección está en construcción.',
   },
 };
 
 export default function Placeholder({ portal, subtitle }) {
   const info = PORTAL_INFO[portal] || {
-    title: 'Modulo en construccion',
+    title: 'Módulo en construcción',
     emoji: '🚧',
-    description: 'Esta seccion esta en construccion.',
+    description: 'Esta sección está en construcción.',
   };
 
   return (

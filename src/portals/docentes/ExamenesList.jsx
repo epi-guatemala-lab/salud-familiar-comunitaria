@@ -68,7 +68,7 @@ export default function ExamenesList() {
 
       {error && (
         <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-800 flex items-center justify-between">
-          <span>Error: {error.message}</span>
+          <span>Error: {error?.message || 'No se pudo conectar al servidor'}</span>
           <button
             type="button"
             className="underline"

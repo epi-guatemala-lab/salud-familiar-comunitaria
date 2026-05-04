@@ -11,14 +11,14 @@ import Checkbox from '../../components/ui/Checkbox';
 import RadioGroup from '../../components/ui/RadioGroup';
 
 const MODOS_ANTI_CHEAT = [
-  { id: 'ESTRICTO', label: 'Estricto (recomendado)' },
-  { id: 'NORMAL', label: 'Normal' },
-  { id: 'LAXO', label: 'Laxo (solo logging)' },
+  { value: 'ESTRICTO', label: 'Estricto (recomendado)' },
+  { value: 'NORMAL', label: 'Normal' },
+  { value: 'LAXO', label: 'Laxo (solo logging)' },
 ];
 
 const ORIGENES = [
-  { id: 'CERO', label: 'Crear desde cero (banco)' },
-  { id: 'TEMA', label: 'Desde tema de rúbrica (auto-popular)' },
+  { value: 'CERO', label: 'Crear desde cero (banco)' },
+  { value: 'TEMA', label: 'Desde tema de rúbrica (auto-popular)' },
 ];
 
 /**

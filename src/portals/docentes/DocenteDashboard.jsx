@@ -29,7 +29,7 @@ export default function DocenteDashboard() {
 
       {error && (
         <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-800">
-          Error al cargar dashboard: {error.message}
+          Error al cargar dashboard: {error?.message || 'No se pudo conectar al servidor'}
         </div>
       )}
 

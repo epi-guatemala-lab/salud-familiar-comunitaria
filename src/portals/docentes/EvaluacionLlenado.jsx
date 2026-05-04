@@ -25,7 +25,7 @@ export default function EvaluacionLlenado() {
   if (error) {
     return (
       <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-800">
-        Error al cargar la evaluación: {error.message}
+        Error al cargar la evaluación: {error?.message || 'No se pudo conectar al servidor'}
       </div>
     );
   }

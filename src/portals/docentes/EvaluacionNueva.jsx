@@ -34,10 +34,10 @@ const RUBRICAS = [
 ];
 
 const MODALIDADES = [
-  { id: 'ORAL', label: 'Oral' },
-  { id: 'ESCRITA', label: 'Escrita' },
-  { id: 'MIXTA', label: 'Mixta' },
-  { id: 'PRACTICA', label: 'Práctica' },
+  { value: 'ORAL', label: 'Oral' },
+  { value: 'ESCRITA', label: 'Escrita' },
+  { value: 'MIXTA', label: 'Mixta' },
+  { value: 'PRACTICA', label: 'Práctica' },
 ];
 
 /**

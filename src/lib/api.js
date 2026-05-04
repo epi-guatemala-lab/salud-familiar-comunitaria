@@ -3,6 +3,26 @@ import { STORAGE_KEYS, EVENTS } from '../config/constants';
 
 const BASE = VITE_API_URL.replace(/\/$/, '');
 
+// Traductor de mensajes Pydantic crudos (en inglés) al español del usuario.
+// Si no encuentra match, devuelve un fallback amable en español sin tirar el detalle.
+function translatePydanticMsg(rawMsg) {
+  if (!rawMsg) return 'Datos inválidos.';
+  const s = String(rawMsg);
+  // "Input should be 'X', 'Y' or 'Z'"
+  const m1 = s.match(/Input should be\s+(.+)$/i);
+  if (m1) return `Valor inválido. Esperado: ${m1[1]}.`;
+  if (/Field required/i.test(s)) return 'Campo obligatorio.';
+  if (/value is not a valid (integer|int)/i.test(s)) return 'Debe ser un número entero.';
+  if (/value is not a valid float|number/i.test(s)) return 'Debe ser un número.';
+  if (/value is not a valid (date|datetime)/i.test(s)) return 'Fecha inválida.';
+  if (/value is not a valid email/i.test(s)) return 'Correo electrónico inválido.';
+  if (/string_too_short/i.test(s) || /at least \d+ character/i.test(s)) return 'Demasiado corto.';
+  if (/string_too_long/i.test(s) || /at most \d+ character/i.test(s)) return 'Demasiado largo.';
+  if (/greater than/i.test(s)) return 'Valor fuera de rango (muy bajo).';
+  if (/less than/i.test(s)) return 'Valor fuera de rango (muy alto).';
+  return s; // fallback: devolver el mensaje original (mejor algo en inglés que nada)
+}
+
 export class ApiError extends Error {
   constructor(message, status, code, field, context) {
     super(message || 'Error');
@@ -81,9 +101,10 @@ async function request(method, path, body, opts = {}) {
         if (typeof d === 'string') {
           message = d;
         } else if (Array.isArray(d) && d.length > 0) {
-          // Pydantic validation errors
+          // Pydantic validation errors → traducir al español
           const first = d[0];
-          message = first.msg || first.message || `Error ${res.status}`;
+          const rawMsg = first.msg || first.message || `Error ${res.status}`;
+          message = translatePydanticMsg(rawMsg);
           field = Array.isArray(first.loc) ? first.loc.slice(-1)[0] : undefined;
         } else if (d && typeof d === 'object') {
           message = d.detail || d.message || d.error || `Error ${res.status}`;

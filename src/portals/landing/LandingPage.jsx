@@ -18,8 +18,8 @@ const CARDS = [
     emoji: '👨‍⚕️',
     titulo: 'Soy docente',
     descripcion:
-      'Acceder al portal docente para evaluaciones, examenes y seguimiento de residentes.',
-    cta: 'Iniciar sesion docente',
+      'Acceder al portal docente para evaluaciones, exámenes y seguimiento de residentes.',
+    cta: 'Iniciar sesión docente',
     color: 'border-igss-gold hover:bg-yellow-50',
   },
   {
@@ -27,8 +27,8 @@ const CARDS = [
     emoji: '🎓',
     titulo: 'Soy estudiante / residente',
     descripcion:
-      'Acceder a mis examenes, calificaciones y boleta de notas.',
-    cta: 'Iniciar sesion residente',
+      'Acceder a mis exámenes, calificaciones y boleta de notas.',
+    cta: 'Iniciar sesión residente',
     color: 'border-igss-red hover:bg-red-50',
   },
 ];
@@ -44,7 +44,7 @@ export default function LandingPage() {
           </h1>
           <p className="text-gray-700 max-w-2xl mx-auto">
             Plataforma del IGSS para la Estrategia de Salud Familiar y Comunitaria. Seleccione la
-            opcion que corresponde a su rol.
+            opción que corresponde a su rol.
           </p>
         </div>
 
@@ -75,7 +75,7 @@ export default function LandingPage() {
         <div className="mt-10 text-center text-xs text-gray-500">
           <p>
             Si tiene problemas para acceder, contacte al administrador del sistema o a la
-            Direccion de Epidemiologia del IGSS.
+            Dirección de Epidemiología del IGSS.
           </p>
         </div>
       </main>
