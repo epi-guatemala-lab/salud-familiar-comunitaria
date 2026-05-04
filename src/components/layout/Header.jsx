@@ -4,7 +4,7 @@ import { BASE_URL } from '../../config/env';
 
 export default function Header({ showSfycLogo = false, user, portal, subtitle }) {
   const igssLogo = `${BASE_URL}igss-logo.png`;
-  const sfycLogo = `${BASE_URL}sfyc-logo.svg`;
+  const sfycLogo = `${BASE_URL}sfyc-logo.png`;
 
   return (
     <header className="bg-white border-b-2 border-igss-700 shadow-sm">

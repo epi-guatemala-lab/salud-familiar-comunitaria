@@ -7,7 +7,6 @@ import { useAuth } from '../../contexts/AuthContext';
  * DocenteLogin
  * - Reusa <LoginForm portal="docentes"> que provee el agente A.
  * - Si ya está autenticado y rol === 'docente'/admin → redirige al dashboard.
- * - Si el backend responde con `password_reset_required=true` → /docentes/cambiar-password.
  * - Soporta `?redirect=/ruta` y `state.from` para volver al destino original tras login.
  */
 export default function DocenteLogin() {
@@ -33,16 +32,9 @@ export default function DocenteLogin() {
 
   /**
    * Callback que recibe LoginForm tras login exitoso.
-   * El payload viene del backend: { token, user, password_reset_required }.
+   * Cambio de contraseña deshabilitado por ahora — siempre va al dashboard.
    */
-  const handleSuccess = (loginRes) => {
-    if (loginRes?.password_reset_required) {
-      navigate('/docentes/cambiar-password', {
-        replace: true,
-        state: { from: { pathname: targetPath }, forced: true },
-      });
-      return;
-    }
+  const handleSuccess = () => {
     navigate(targetPath, { replace: true });
   };
 

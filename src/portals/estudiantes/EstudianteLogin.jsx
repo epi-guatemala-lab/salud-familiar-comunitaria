@@ -7,8 +7,6 @@ import { useAuth } from '../../contexts/AuthContext';
  * EstudianteLogin
  * - Reusa <LoginForm portal="estudiantes">.
  * - Si ya está autenticado y rol === 'estudiante'/admin → redirige al dashboard.
- * - Si el backend responde con `password_reset_required=true`
- *   → /estudiantes/cambiar-password.
  * - Soporta `?redirect=/ruta` y `state.from` para volver al destino original.
  */
 export default function EstudianteLogin() {
@@ -34,14 +32,8 @@ export default function EstudianteLogin() {
     return <Navigate to={targetPath} replace />;
   }
 
-  const handleSuccess = (loginRes) => {
-    if (loginRes?.password_reset_required) {
-      navigate('/estudiantes/cambiar-password', {
-        replace: true,
-        state: { from: { pathname: targetPath }, forced: true },
-      });
-      return;
-    }
+  const handleSuccess = () => {
+    // Cambio de contraseña deshabilitado por ahora — siempre va al dashboard.
     navigate(targetPath, { replace: true });
   };
 
