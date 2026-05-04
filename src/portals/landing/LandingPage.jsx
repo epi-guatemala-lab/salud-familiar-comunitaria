@@ -5,10 +5,10 @@ import Footer from '../../components/layout/Footer';
 const CARDS = [
   {
     to: '/satisfaccion',
-    emoji: '🩺',
-    titulo: 'Soy paciente',
+    emoji: '📋',
+    titulo: 'Encuesta de satisfacción',
     descripcion:
-      'Quiero llenar la encuesta de satisfaccion sobre la atencion que recibi en la clinica.',
+      'Formulario de retroalimentación sobre la atención brindada en la clínica de Salud Familiar y Comunitaria.',
     cta: 'Ir a la encuesta',
     color: 'border-igss-700 hover:bg-igss-50',
     public: true,

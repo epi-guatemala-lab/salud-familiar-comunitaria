@@ -2,9 +2,25 @@ import { Link } from 'react-router-dom';
 import LogoutButton from '../shared/LogoutButton';
 import { BASE_URL } from '../../config/env';
 
-export default function Header({ showSfycLogo = false, user, portal, subtitle }) {
+export default function Header({ showSfycLogo = false, user, portal, subtitle, right }) {
   const igssLogo = `${BASE_URL}igss-logo.png`;
   const sfycLogo = `${BASE_URL}sfyc-logo.png`;
+
+  // Render del lado derecho:
+  //  1) Si el caller pasa `right` (Layouts), úsalo.
+  //  2) Si pasa `user`, render por defecto con nombre + LogoutButton.
+  //  3) Sin nada → null.
+  const rightContent =
+    right ??
+    (user ? (
+      <div className="flex items-center gap-3">
+        <div className="text-right hidden sm:block">
+          <div className="text-sm font-semibold text-gray-800">{user.nombre || user.username}</div>
+          <div className="text-xs text-gray-500">{user.rol}</div>
+        </div>
+        <LogoutButton />
+      </div>
+    ) : null);
 
   return (
     <header className="bg-white border-b-2 border-igss-700 shadow-sm">
@@ -38,15 +54,7 @@ export default function Header({ showSfycLogo = false, user, portal, subtitle })
             <p className="text-xs text-gray-600">{subtitle || 'Salud Familiar y Comunitaria'}</p>
           </div>
         </Link>
-        {user && (
-          <div className="flex items-center gap-3">
-            <div className="text-right hidden sm:block">
-              <div className="text-sm font-semibold text-gray-800">{user.nombre}</div>
-              <div className="text-xs text-gray-500">{user.rol}</div>
-            </div>
-            <LogoutButton />
-          </div>
-        )}
+        {rightContent}
       </div>
       <div className="h-1 bg-gradient-to-r from-igss-700 via-igss-gold to-igss-700" />
     </header>
