@@ -210,7 +210,7 @@ export default function LlenadoSemaforo({ evaluacion, tipoLabel, onRefetch }) {
           : '/docentes/evaluaciones',
       );
     } catch (err) {
-      setFirmaError(err.message || 'No se pudo firmar la evaluación');
+      setFirmaError(err?.message || 'No se pudo firmar la evaluación');
       setFirmando(false);
     }
   };

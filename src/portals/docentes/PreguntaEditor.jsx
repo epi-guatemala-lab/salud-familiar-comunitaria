@@ -189,7 +189,7 @@ export default function PreguntaEditor({ pregunta = null, onClose, onSaved, tema
       }
       onSaved?.(saved);
     } catch (err) {
-      toast.error(err.message || 'Error al guardar pregunta');
+      toast.error(err?.message || 'Error al guardar pregunta');
       if (err.field) setErrors({ [err.field]: err.message });
     } finally {
       setSubmitting(false);

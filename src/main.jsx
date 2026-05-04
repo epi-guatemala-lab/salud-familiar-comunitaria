@@ -6,7 +6,7 @@ import './styles/animations.css';
 
 const container = document.getElementById('root');
 if (!container) {
-  throw new Error('No se encontro el elemento #root en index.html');
+  throw new Error('No se encontró el elemento #root en index.html');
 }
 
 createRoot(container).render(

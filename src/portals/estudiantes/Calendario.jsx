@@ -180,7 +180,7 @@ export default function Calendario() {
 
         {error && (
           <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800 mb-3">
-            Error al cargar calendario: {error.message}
+            Error al cargar calendario: {error?.message || 'No se pudo conectar al servidor'}
           </div>
         )}
 

@@ -104,7 +104,7 @@ export default function PreguntasBanco() {
       toast.success('Importación completada');
       refetch();
     } catch (err) {
-      toast.error(err.message || 'Error al importar CSV');
+      toast.error(err?.message || 'Error al importar CSV');
     } finally {
       setImporting(false);
     }

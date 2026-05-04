@@ -175,7 +175,7 @@ export default function ExamenCrear() {
       const id = res?.id || res?.examen?.id;
       navigate(id ? `/docentes/examenes/${id}/intentos` : '/docentes/examenes');
     } catch (err) {
-      setSubmitError(err.message || 'No se pudo crear el examen');
+      setSubmitError(err?.message || 'No se pudo crear el examen');
       setSubmitting(false);
     }
   };

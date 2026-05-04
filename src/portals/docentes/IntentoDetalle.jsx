@@ -115,7 +115,7 @@ export default function IntentoDetalle() {
       toast.success('Intento aprobado');
       refetch();
     } catch (err) {
-      toast.error(err.message || 'Error al aprobar');
+      toast.error(err?.message || 'Error al aprobar');
     } finally {
       setActionLoading(false);
     }
@@ -136,7 +136,7 @@ export default function IntentoDetalle() {
       setRazonAnular('');
       refetch();
     } catch (err) {
-      toast.error(err.message || 'Error al anular');
+      toast.error(err?.message || 'Error al anular');
     } finally {
       setActionLoading(false);
     }

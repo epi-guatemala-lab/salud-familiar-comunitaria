@@ -17,7 +17,7 @@ export default function LogoutButton({ className = '' }) {
       onClick={handle}
       className={`text-sm text-igss-700 hover:text-igss-900 font-medium underline ${className}`}
     >
-      Cerrar sesion
+      Cerrar sesión
     </button>
   );
 }

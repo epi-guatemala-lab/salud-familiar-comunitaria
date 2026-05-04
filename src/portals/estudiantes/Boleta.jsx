@@ -44,7 +44,7 @@ export default function Boleta() {
       URL.revokeObjectURL(url);
       toast.success('Boleta descargada');
     } catch (err) {
-      toast.error(err.message || 'No se pudo descargar la boleta');
+      toast.error(err?.message || 'No se pudo descargar la boleta');
     } finally {
       setDownloading(false);
     }
@@ -61,7 +61,7 @@ export default function Boleta() {
 
       {error && (
         <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-800">
-          Error al cargar resumen: {error.message}
+          Error al cargar resumen: {error?.message || 'No se pudo conectar al servidor'}
         </div>
       )}
 

@@ -27,9 +27,9 @@ export default class ErrorBoundary extends Component {
         <div className="min-h-screen flex items-center justify-center bg-igss-50 p-4">
           <div className="bg-white rounded-lg shadow-lg p-6 max-w-md text-center">
             <div className="text-5xl mb-3">⚠</div>
-            <h1 className="text-xl font-bold text-igss-800 mb-2">Algo salio mal</h1>
+            <h1 className="text-xl font-bold text-igss-800 mb-2">Algo salió mal</h1>
             <p className="text-sm text-gray-600 mb-4">
-              Ha ocurrido un error inesperado. Recargue la pagina o vuelva al inicio.
+              Ha ocurrido un error inesperado. Recargue la página o vuelva al inicio.
             </p>
             <pre className="text-xs text-left bg-gray-100 p-2 rounded overflow-auto max-h-40 mb-4">
               {String(this.state.error?.message || this.state.error || '')}

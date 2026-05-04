@@ -5,7 +5,7 @@ import Spinner from '../ui/Spinner';
 
 // Selector de unidad medica IGSS. Usa cache 24h y fallback estatico si el
 // endpoint /api/unidades/public falla.
-export default function UnidadSelect({ value, onChange, error, label = 'Unidad / clinica', required = true }) {
+export default function UnidadSelect({ value, onChange, error, label = 'Unidad / clínica', required = true }) {
   const { unidades, loading, usedFallback } = useUnidadesPublic();
 
   const options = useMemo(
@@ -41,7 +41,7 @@ export default function UnidadSelect({ value, onChange, error, label = 'Unidad /
       />
       {usedFallback && (
         <p className="text-xs text-yellow-700 mt-1">
-          Mostrando lista basica de unidades (sin conexion al servidor).
+          Mostrando lista básica de unidades (sin conexión al servidor).
         </p>
       )}
     </div>

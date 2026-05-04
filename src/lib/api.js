@@ -75,7 +75,7 @@ async function request(method, path, body, opts = {}) {
       if (res.status === 401 && opts.auth !== false) {
         clearTimeout(timeoutId);
         window.dispatchEvent(new CustomEvent(EVENTS.AUTH_INVALIDATED));
-        throw new ApiError('Sesion invalida o expirada', 401, 'UNAUTHORIZED');
+        throw new ApiError('Sesión inválida o expirada', 401, 'UNAUTHORIZED');
       }
 
       const text = await res.text();

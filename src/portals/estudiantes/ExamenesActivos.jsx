@@ -56,7 +56,7 @@ export default function ExamenesActivos() {
 
       {error && (
         <div className="bg-sfyc-rojo/10 border border-sfyc-rojo text-sfyc-rojo p-4 rounded">
-          No se pudieron cargar los exámenes: {error.message}
+          No se pudieron cargar los exámenes: {error?.message || 'No se pudo conectar al servidor'}
         </div>
       )}
 

@@ -189,7 +189,7 @@ export default function LlenadoGenerica({ evaluacion, onRefetch }) {
           : '/docentes/evaluaciones',
       );
     } catch (err) {
-      setFirmaError(err.message || 'No se pudo firmar la evaluación');
+      setFirmaError(err?.message || 'No se pudo firmar la evaluación');
       setFirmando(false);
     }
   };

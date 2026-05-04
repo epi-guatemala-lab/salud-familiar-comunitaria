@@ -253,7 +253,7 @@ export default function SatisfaccionPage() {
           <section className="bg-white rounded-lg p-4 shadow">
             <h2 className="font-semibold text-igss-700 mb-3">{M.encuesta.seccionProfesionales}</h2>
             <p className="text-xs text-gray-600 mb-3">
-              Si no recibió atención de alguno de estos profesionales, marque "No aplica".
+              Si no recibió atención de alguno de estos profesionales, marque «No aplica».
             </p>
             <div className="space-y-1">
               {PROFESIONALES_6.map((p) => (

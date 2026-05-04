@@ -78,7 +78,7 @@ export default function RespuestasAbiertas() {
       }));
       toast.success('Calificación guardada');
     } catch (err) {
-      toast.error(err.message || 'Error al calificar');
+      toast.error(err?.message || 'Error al calificar');
     }
   };
 
@@ -109,7 +109,7 @@ export default function RespuestasAbiertas() {
       toast.success(`Se calificaron ${items.length} respuesta(s)`);
       refetch();
     } catch (err) {
-      toast.error(err.message || 'Error al calificar lote');
+      toast.error(err?.message || 'Error al calificar lote');
     }
   };
 

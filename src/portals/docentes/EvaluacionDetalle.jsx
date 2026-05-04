@@ -30,7 +30,7 @@ export default function EvaluacionDetalle() {
   if (error) {
     return (
       <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-800">
-        Error: {error.message}
+        Error: {error?.message || 'No se pudo conectar al servidor'}
       </div>
     );
   }
@@ -76,7 +76,7 @@ export default function EvaluacionDetalle() {
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (e) {
-      alert(`Error descargando PDF: ${e.message}`);
+      alert(`Error descargando PDF: ${e?.message || 'No se pudo descargar el archivo'}`);
     }
   };
 

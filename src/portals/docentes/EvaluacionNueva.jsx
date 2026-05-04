@@ -126,7 +126,7 @@ export default function EvaluacionNueva() {
       if (!newId) throw new Error('Respuesta del servidor sin ID');
       navigate(`/docentes/evaluaciones/${newId}`);
     } catch (err) {
-      setSubmitError(err.message || 'No se pudo crear la evaluación');
+      setSubmitError(err?.message || 'No se pudo crear la evaluación');
       setSubmitting(false);
     }
   };

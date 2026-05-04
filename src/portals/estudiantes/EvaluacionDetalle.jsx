@@ -72,7 +72,7 @@ export default function EvaluacionDetalle() {
       a.remove();
       URL.revokeObjectURL(url);
     } catch (err) {
-      toast.error(err.message || 'No se pudo descargar el PDF');
+      toast.error(err?.message || 'No se pudo descargar el PDF');
     } finally {
       setDownloading(false);
     }
@@ -89,7 +89,7 @@ export default function EvaluacionDetalle() {
   if (error) {
     return (
       <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-800">
-        Error al cargar evaluación: {error.message}
+        Error al cargar evaluación: {error?.message || 'No se pudo conectar al servidor'}
       </div>
     );
   }
