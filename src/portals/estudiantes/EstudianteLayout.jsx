@@ -42,7 +42,8 @@ export default function EstudianteLayout() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header
-        portal="estudiantes"
+        showSfycLogo
+        portal="Portal Estudiantes SFyC"
         right={
           <div className="flex items-center gap-3">
             {user && (

@@ -41,8 +41,12 @@ export default function EstudianteLogin() {
     <div className="min-h-screen bg-gradient-to-br from-igss-50 to-igss-100 flex flex-col items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-full shadow-igss mb-4">
-            <span className="text-4xl" role="img" aria-label="estudiante">🎓</span>
+          <div className="inline-flex items-center justify-center w-28 h-28 bg-white rounded-full shadow-igss mb-4 p-2">
+            <img
+              src={`${import.meta.env.BASE_URL}sfyc-logo.png`}
+              alt="Salud Familiar y Comunitaria IGSS"
+              className="max-h-full max-w-full object-contain"
+            />
           </div>
           <h1 className="text-2xl font-bold text-igss-800">Portal Estudiantes SFyC</h1>
           <p className="text-sm text-igss-700 mt-1">
