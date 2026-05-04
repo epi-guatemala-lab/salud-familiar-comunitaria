@@ -29,7 +29,6 @@ export default function DocenteLayout() {
   const links = [
     { to: '/docentes', label: 'Dashboard', icon: '🏠', exact: true },
     { to: '/docentes/residentes', label: 'Residentes', icon: '👥' },
-    { to: '/docentes/evaluaciones', label: 'Evaluaciones', icon: '📋' },
     { to: '/docentes/examenes', label: 'Exámenes', icon: '📝' },
     { to: '/docentes/preguntas', label: 'Banco', icon: '💾' },
     { to: '/docentes/respuestas-abiertas', label: 'Respuestas Abiertas', icon: '✏️' },
