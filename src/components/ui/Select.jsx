@@ -3,13 +3,16 @@ export default function Select({
   error,
   hint,
   id,
-  options = [],
+  options,
   placeholder = 'Seleccione...',
   className = '',
   required,
+  children,
   ...rest
 }) {
   const selId = id || rest.name;
+  // Soporta ambos patrones del codebase: children (<option>) o prop options=[].
+  const useChildren = children !== undefined && children !== null;
   return (
     <div className={`flex flex-col gap-1 ${className}`}>
       {label && (
@@ -23,12 +26,16 @@ export default function Select({
           ${error ? 'border-red-500' : 'border-gray-300 focus:border-igss-500'}`}
         {...rest}
       >
-        <option value="">{placeholder}</option>
-        {options.map((o) => (
-          <option key={o.value ?? o} value={o.value ?? o}>
-            {o.label ?? o}
-          </option>
-        ))}
+        {useChildren ? children : (
+          <>
+            <option value="">{placeholder}</option>
+            {(options || []).map((o) => (
+              <option key={o.value ?? o} value={o.value ?? o}>
+                {o.label ?? o}
+              </option>
+            ))}
+          </>
+        )}
       </select>
       {hint && !error && <span className="text-xs text-gray-500">{hint}</span>}
       {error && <span className="text-xs text-red-600">{error}</span>}
