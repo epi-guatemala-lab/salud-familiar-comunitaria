@@ -1,4 +1,5 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { VITE_API_URL } from '../../config/env';
 import { useApi } from '../../hooks/useApi';
 import Card from '../../components/ui/Card';
 import Spinner from '../../components/ui/Spinner';
@@ -61,7 +62,7 @@ export default function EvaluacionDetalle() {
     // Convertir blob a object URL y triggear descarga.
     try {
       const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
-      const baseUrl = import.meta.env.VITE_API_URL || '/api';
+      const baseUrl = VITE_API_URL;
       const res = await fetch(
         `${baseUrl}/docente/evaluaciones/${id}/pdf`,
         { headers: { Authorization: `Bearer ${token || ''}` } },

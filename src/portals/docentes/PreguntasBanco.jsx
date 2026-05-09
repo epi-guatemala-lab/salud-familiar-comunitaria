@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { VITE_API_URL } from '../../config/env';
 import { useApi } from '../../hooks/useApi';
 import { useToast } from '../../contexts/ToastContext';
 import { api } from '../../lib/api';
@@ -91,7 +92,7 @@ export default function PreguntasBanco() {
       const url = '/api/docente/preguntas/import';
       const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
       const res = await fetch(
-        (import.meta.env?.VITE_API_URL || '').replace(/\/$/, '') + url,
+        VITE_API_URL.replace(/\/$/, '') + url,
         {
           method: 'POST',
           headers: token ? { Authorization: `Bearer ${token}` } : {},

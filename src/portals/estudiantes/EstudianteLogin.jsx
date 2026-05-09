@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { BASE_URL } from '../../config/env';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import LoginForm from '../../components/shared/LoginForm';
 import { useAuth } from '../../contexts/AuthContext';
@@ -43,7 +44,7 @@ export default function EstudianteLogin() {
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-28 h-28 bg-white rounded-full shadow-igss mb-4 p-2">
             <img
-              src={`${import.meta.env.BASE_URL}sfyc-logo.png`}
+              src={`${BASE_URL}sfyc-logo.png`}
               alt="Salud Familiar y Comunitaria IGSS"
               className="max-h-full max-w-full object-contain"
             />

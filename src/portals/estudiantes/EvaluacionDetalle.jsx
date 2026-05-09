@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { VITE_API_URL } from '../../config/env';
 import { Link, useParams } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
 import { useToast } from '../../contexts/ToastContext';
@@ -53,7 +54,7 @@ export default function EvaluacionDetalle() {
   const handleDownloadPdf = async () => {
     setDownloading(true);
     try {
-      const base = (import.meta.env?.VITE_API_URL || '').replace(/\/$/, '');
+      const base = VITE_API_URL.replace(/\/$/, '');
       const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
       const res = await fetch(`${base}/api/estudiante/transcript.pdf?eval_id=${id}`, {
         method: 'GET',

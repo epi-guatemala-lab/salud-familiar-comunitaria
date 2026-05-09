@@ -1,4 +1,5 @@
 import { createBrowserRouter } from 'react-router-dom';
+import { BASE_URL } from './config/env';
 import LandingPage from './portals/landing/LandingPage';
 
 // Portal 1 — Satisfacción (público)
@@ -98,7 +99,7 @@ const router = createBrowserRouter(
 
     { path: '*', element: <NotFound /> },
   ],
-  { basename: import.meta.env.BASE_URL }
+  { basename: BASE_URL }
 );
 
 export default router;

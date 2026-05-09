@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { VITE_API_URL } from '../../config/env';
 import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -23,7 +24,7 @@ export default function Boleta() {
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      const base = (import.meta.env?.VITE_API_URL || '').replace(/\/$/, '');
+      const base = VITE_API_URL.replace(/\/$/, '');
       const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
       const res = await fetch(`${base}/api/estudiante/transcript.pdf`, {
         method: 'GET',
