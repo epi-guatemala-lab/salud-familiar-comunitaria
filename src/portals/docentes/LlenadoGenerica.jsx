@@ -39,7 +39,8 @@ export default function LlenadoGenerica({ evaluacion, onRefetch }) {
     const dims = evaluacion.rubrica?.dimensiones || [];
     return new Set(dims.length > 0 ? [dims[0].id] : []);
   });
-  const [saveStatus, setSaveStatus] = useState('idle'); // idle | saving | saved | error
+  const [saveStatus, setSaveStatus] = useState('idle'); // idle | saving | saved | error | forbidden | unauth
+  const [saveError, setSaveError] = useState(null);
   const [showFirmar, setShowFirmar] = useState(false);
   const [firmando, setFirmando] = useState(false);
   const [firmaError, setFirmaError] = useState(null);
@@ -73,8 +74,24 @@ export default function LlenadoGenerica({ evaluacion, onRefetch }) {
         areas_mejora: areasMejora,
       });
       setSaveStatus('saved');
+      setSaveError(null);
     } catch (err) {
+      // Distinguimos entre "no eres dueño" (403) y "sesión expirada" (401)
+      // y "red caída" (status 0/5xx). Antes mostrábamos siempre
+      // "Error al guardar — reintentando" infinito, escondiendo el bug
+      // real (admin viendo eval ajena, sesión perdida, etc.).
+      if (err?.status === 403) {
+        setSaveStatus('forbidden');
+        setSaveError('No tienes permiso para editar esta evaluación (no eres el docente asignado).');
+        return;
+      }
+      if (err?.status === 401) {
+        setSaveStatus('unauth');
+        setSaveError('Tu sesión expiró. Vuelve a iniciar sesión para guardar.');
+        return;
+      }
       setSaveStatus('error');
+      setSaveError(err?.message || 'No se pudo guardar; la app reintenta automáticamente.');
     }
   };
 
@@ -370,7 +387,17 @@ export default function LlenadoGenerica({ evaluacion, onRefetch }) {
             )}
             {saveStatus === 'error' && (
               <p className="text-xs text-red-600">
-                ⚠ Error al guardar — reintentando
+                ⚠ {saveError || 'Error al guardar; la app reintenta.'}
+              </p>
+            )}
+            {saveStatus === 'forbidden' && (
+              <p className="text-xs text-red-700 font-semibold">
+                🚫 {saveError}
+              </p>
+            )}
+            {saveStatus === 'unauth' && (
+              <p className="text-xs text-red-700 font-semibold">
+                🔒 {saveError}
               </p>
             )}
           </Card>

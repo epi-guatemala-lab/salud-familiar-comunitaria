@@ -38,6 +38,7 @@ export default function LlenadoSemaforo({ evaluacion, tipoLabel, onRefetch }) {
   });
 
   const [saveStatus, setSaveStatus] = useState('idle');
+  const [saveError, setSaveError] = useState(null);
   const [showFirmar, setShowFirmar] = useState(false);
   const [confirmaTexto, setConfirmaTexto] = useState('');
   const [firmando, setFirmando] = useState(false);
@@ -77,8 +78,22 @@ export default function LlenadoSemaforo({ evaluacion, tipoLabel, onRefetch }) {
         areas_mejora: areasMejora,
       });
       setSaveStatus('saved');
+      setSaveError(null);
     } catch (err) {
+      // Distinguimos forbidden / unauth / red — antes era genérico
+      // "Error al guardar — reintentando" infinito.
+      if (err?.status === 403) {
+        setSaveStatus('forbidden');
+        setSaveError('No tienes permiso para editar esta evaluación (no eres el docente asignado).');
+        return;
+      }
+      if (err?.status === 401) {
+        setSaveStatus('unauth');
+        setSaveError('Tu sesión expiró. Vuelve a iniciar sesión para guardar.');
+        return;
+      }
       setSaveStatus('error');
+      setSaveError(err?.message || 'No se pudo guardar; la app reintenta automáticamente.');
     }
   };
 
@@ -385,10 +400,22 @@ export default function LlenadoSemaforo({ evaluacion, tipoLabel, onRefetch }) {
               <span className="text-xs text-igss-700">💾 Guardado</span>
             )}
             {saveStatus === 'saving' && (
-              <span className="text-xs text-gray-600">⏳ Guardando...</span>
+              <span className="text-xs text-gray-600">⏳ Guardando…</span>
             )}
             {saveStatus === 'error' && (
-              <span className="text-xs text-red-600">⚠ Error guardando</span>
+              <span className="text-xs text-red-600">
+                ⚠ {saveError || 'Error guardando; la app reintenta.'}
+              </span>
+            )}
+            {saveStatus === 'forbidden' && (
+              <span className="text-xs text-red-700 font-semibold">
+                🚫 {saveError}
+              </span>
+            )}
+            {saveStatus === 'unauth' && (
+              <span className="text-xs text-red-700 font-semibold">
+                🔒 {saveError}
+              </span>
             )}
           </div>
           <div className="flex items-center gap-2">

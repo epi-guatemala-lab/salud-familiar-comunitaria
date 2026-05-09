@@ -242,7 +242,12 @@ export default function EvaluacionNueva() {
       {step === 3 && (
         <Card className="p-5">
           <h2 className="text-sm font-semibold text-gray-700 mb-4">
-            Paso 3 · Seleccione residente y datos de la evaluación
+            {/* Genérica salta el paso 2 (sin tema) → este paso es el 2/2.
+                GYO/Pediatría sí tienen paso 2 → este es el 3/3. Mostrar
+                el número que coincide con el indicador del wizard. */}
+            {requiereTema
+              ? 'Paso 3 · Seleccione residente y datos de la evaluación'
+              : 'Paso 2 · Seleccione residente y datos de la evaluación'}
           </h2>
           <div className="space-y-4 max-w-md">
             <Select
