@@ -9,15 +9,24 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
 
 export default function ExamenResumen() {
-  const { id: examenId } = useParams();
+  const params = useParams();
+  const examenId = params.id;
+  const intentoIdParam = params.intentoId;
   const location = useLocation();
   const intentoIdFromState = location.state?.intentoId;
   const resultadoFromState = location.state?.resultado;
 
-  const url = intentoIdFromState
-    ? `/api/estudiante/intentos/${intentoIdFromState}`
+  // 3 formas de llegar:
+  //  1) /examenes/:id/resumen + state.resultado (post-submit inline)
+  //  2) /examenes/:id/resumen sin state (refresh) → último intento del examen
+  //  3) /intentos/:intentoId/resumen (desde Calificaciones) → ese intento puntual
+  const intentoId = intentoIdParam || intentoIdFromState;
+  const url = intentoId
+    ? `/api/estudiante/intentos/${intentoId}`
     : `/api/estudiante/examenes/${examenId}/ultimo-intento`;
-  const { data, loading } = useApi(url, { skip: Boolean(resultadoFromState) });
+  // useApi espera (path, depsArray). Pasar `null` salta el fetch cuando ya
+  // recibimos el resultado por location.state (evita TypeError al spread).
+  const { data, loading } = useApi(resultadoFromState ? null : url);
 
   // Asegurar que salimos de fullscreen al llegar acá
   useEffect(() => {

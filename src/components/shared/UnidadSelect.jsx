@@ -8,10 +8,14 @@ import Spinner from '../ui/Spinner';
 export default function UnidadSelect({ value, onChange, error, label = 'Unidad / clínica', required = true }) {
   const { unidades, loading, usedFallback } = useUnidadesPublic();
 
+  // El endpoint /api/unidades/public devuelve {codigo, nombre, departamento, tipo}
+  // sin `id`. Usamos `codigo` como identificador estable (es único: H_POCHUTA,
+  // CONSUL_COBAN, etc.). Antes mapeábamos value=u.id → undefined → SearchableSelect
+  // no podía marcar la opción seleccionada y el botón quedaba en "Seleccione...".
   const options = useMemo(
     () =>
       (unidades || []).map((u) => ({
-        value: u.id,
+        value: u.codigo ?? u.id ?? u.nombre,
         label: u.nombre,
         sublabel: [u.codigo, u.departamento, u.tipo].filter(Boolean).join(' · '),
         raw: u,

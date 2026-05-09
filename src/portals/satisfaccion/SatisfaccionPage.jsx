@@ -26,6 +26,7 @@ function makeInitial(uuid) {
   return {
     uuid,
     unidad_id: null,
+    unidad_codigo: null,
     unidad_nombre: '',
     unidad_departamento: '',
     numero_clinica: '',
@@ -73,7 +74,11 @@ export default function SatisfaccionPage() {
   }, [formData]);
 
   const handleSelectUnidad = (u) => {
+    // El endpoint /api/unidades/public devuelve {codigo, nombre, departamento, tipo}
+    // sin `id`. Guardamos `codigo` (string estable) para que el SearchableSelect
+    // pueda matchear la opción seleccionada y el botón muestre el nombre elegido.
     updateField('unidad_id', u.id ?? null);
+    updateField('unidad_codigo', u.codigo ?? null);
     updateField('unidad_nombre', u.nombre || '');
     updateField('unidad_departamento', u.departamento || '');
   };
@@ -194,7 +199,7 @@ export default function SatisfaccionPage() {
           {/* Seccion 1: Unidad */}
           <section className="bg-white rounded-lg p-4 shadow" id="unidad-anchor">
             <UnidadSelect
-              value={formData.unidad_id}
+              value={formData.unidad_codigo ?? formData.unidad_id}
               onChange={handleSelectUnidad}
               error={errors.unidad}
             />
