@@ -26,7 +26,7 @@ export default function ExamenResumen() {
     : `/api/estudiante/examenes/${examenId}/ultimo-intento`;
   // useApi espera (path, depsArray). Pasar `null` salta el fetch cuando ya
   // recibimos el resultado por location.state (evita TypeError al spread).
-  const { data, loading } = useApi(resultadoFromState ? null : url);
+  const { data, loading, error } = useApi(resultadoFromState ? null : url);
 
   // Asegurar que salimos de fullscreen al llegar acá
   useEffect(() => {
@@ -38,6 +38,31 @@ export default function ExamenResumen() {
   }, []);
 
   const resumen = resultadoFromState || data;
+
+  // Si el backend devolvió 404 (intento no existe / no es del residente
+  // logueado), antes la pantalla quedaba en "Cargando resumen…" infinito
+  // porque resumen=null y loading=false sin handler de error.
+  if (!loading && !resumen && error) {
+    const status = error?.status ?? 0;
+    return (
+      <div className="max-w-lg mx-auto p-6 mt-8 bg-white rounded-lg shadow border">
+        <h1 className="text-xl font-bold text-sfyc-rojo mb-2">
+          {status === 404 ? 'Intento no encontrado' : 'No se pudo cargar el resumen'}
+        </h1>
+        <p className="text-gray-700 mb-4 text-sm">
+          {status === 404
+            ? 'El intento que buscas no existe o no te pertenece.'
+            : error?.message || 'Error inesperado al consultar el resumen.'}
+        </p>
+        <Link
+          to="/estudiantes/calificaciones"
+          className="inline-block bg-igss-700 hover:bg-igss-800 text-white font-bold px-4 py-2 rounded"
+        >
+          ← Volver a calificaciones
+        </Link>
+      </div>
+    );
+  }
 
   if (loading || !resumen) {
     return (

@@ -8,6 +8,7 @@ import EvaluacionRadar from './EvaluacionRadar';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatFechaCorta } from '../../lib/format';
 import EvaluacionLlenado from './EvaluacionLlenado';
+import { STORAGE_KEYS } from '../../config/constants';
 
 /**
  * EvaluacionDetalle — vista de una evaluación.
@@ -59,7 +60,7 @@ export default function EvaluacionDetalle() {
     // Fetch con Authorization header (NO token en URL — leak vía referer/logs).
     // Convertir blob a object URL y triggear descarga.
     try {
-      const token = localStorage.getItem('sfyc_token');
+      const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
       const baseUrl = import.meta.env.VITE_API_URL || '/api';
       const res = await fetch(
         `${baseUrl}/docente/evaluaciones/${id}/pdf`,

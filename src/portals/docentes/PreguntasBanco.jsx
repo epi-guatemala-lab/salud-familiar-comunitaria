@@ -9,6 +9,7 @@ import Select from '../../components/ui/Select';
 import Spinner from '../../components/ui/Spinner';
 import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
+import { STORAGE_KEYS } from '../../config/constants';
 import Button from '../../components/ui/Button';
 
 import PreguntaEditor from './PreguntaEditor';
@@ -88,7 +89,7 @@ export default function PreguntasBanco() {
       fd.append('file', file);
       // TODO: backend endpoint POST /api/docente/preguntas/import (CSV con encabezado tipo,enunciado,opciones,...)
       const url = '/api/docente/preguntas/import';
-      const token = localStorage.getItem('sfyc_token');
+      const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
       const res = await fetch(
         (import.meta.env?.VITE_API_URL || '').replace(/\/$/, '') + url,
         {

@@ -73,10 +73,18 @@ export default function ExamenesActivos() {
       )}
 
       <ul className="space-y-3">
-        {examenes.map((ex) => (
+        {examenes.map((ex) => {
+          // Examen cerrado = fecha de cierre ya pasó. Antes seguía
+          // accesible vía URL directa con botón "Iniciar →" porque la
+          // lista solo filtraba por estado='ACTIVO'.
+          const cerrado = ex.fecha_cierre
+            && new Date(ex.fecha_cierre).getTime() <= Date.now();
+          return (
           <li
             key={ex.id}
-            className="bg-white border rounded-lg shadow-sm hover:shadow transition-shadow p-4 flex flex-col sm:flex-row sm:items-center gap-3"
+            className={`bg-white border rounded-lg shadow-sm hover:shadow transition-shadow p-4 flex flex-col sm:flex-row sm:items-center gap-3 ${
+              cerrado ? 'opacity-60' : ''
+            }`}
           >
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
@@ -97,6 +105,11 @@ export default function ExamenesActivos() {
                     </span>
                   );
                 })()}
+                {cerrado && (
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded bg-gray-200 text-gray-700">
+                    Cerrado
+                  </span>
+                )}
               </div>
               <p className="text-sm text-gray-600 mt-1">
                 {ex.total_preguntas} preguntas · {ex.duracion_minutos} minutos
@@ -104,14 +117,20 @@ export default function ExamenesActivos() {
                   ` · ${ex.creado_por_docente_nombre || ex.docente}`}
               </p>
               <p className="text-sm mt-1">
-                <span className="text-gray-500">Cierra en:</span>{' '}
+                <span className="text-gray-500">
+                  {cerrado ? 'Cerró:' : 'Cierra en:'}
+                </span>{' '}
                 <span className="font-mono font-semibold text-igss-800">
                   {formatRestante(ex.fecha_cierre)}
                 </span>
               </p>
             </div>
             <div className="flex-shrink-0">
-              {ex.intento_en_curso ? (
+              {cerrado ? (
+                <span className="text-sm text-gray-500 italic">
+                  Ventana de examen finalizada
+                </span>
+              ) : ex.intento_en_curso ? (
                 <Link
                   to={`/estudiantes/examenes/${ex.id}/runner`}
                   className="bg-sfyc-amarillo hover:bg-sfyc-amarillo/90 text-igss-900 font-bold px-4 py-2 rounded inline-block"
@@ -132,7 +151,8 @@ export default function ExamenesActivos() {
               )}
             </div>
           </li>
-        ))}
+          );
+        })}
       </ul>
     </div>
   );
