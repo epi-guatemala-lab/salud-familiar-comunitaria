@@ -111,7 +111,7 @@ export default function EstudianteDashboard() {
 
             <Card className="p-4 border-l-4 border-l-amber-400">
               <h3 className="text-xs font-semibold text-gray-600 uppercase mb-2">
-                Exámenes activos
+                Exámenes por rendir
               </h3>
               <p className="text-3xl font-bold text-igss-900">
                 {examenesActivos.length}
@@ -119,6 +119,11 @@ export default function EstudianteDashboard() {
               {examenesActivos[0] && (
                 <p className="text-xs text-gray-600 mt-1">
                   Próximo cierre: {countdown(examenesActivos[0].fecha_fin)}
+                </p>
+              )}
+              {examenesActivos.length === 0 && (
+                <p className="text-xs text-gray-500 italic mt-1">
+                  Sin exámenes pendientes de rendir.
                 </p>
               )}
             </Card>
@@ -147,10 +152,10 @@ export default function EstudianteDashboard() {
             </Card>
           </div>
 
-          {/* Sección exámenes activos */}
+          {/* Sección exámenes por rendir */}
           <Card className="p-5">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-gray-700">Exámenes activos</h2>
+              <h2 className="text-sm font-semibold text-gray-700">Exámenes por rendir</h2>
               <Link
                 to="/estudiantes/examenes"
                 className="text-xs font-medium text-igss-700 hover:text-igss-900"
@@ -160,7 +165,7 @@ export default function EstudianteDashboard() {
             </div>
             {examenesActivos.length === 0 ? (
               <p className="text-sm text-gray-500 italic">
-                No hay exámenes activos en este momento.
+                No tienes exámenes pendientes de rendir en este momento.
               </p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

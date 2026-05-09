@@ -144,6 +144,17 @@ export default function ExamenCrear() {
   };
   const handleBack = () => setStep((s) => Math.max(s - 1, 1));
 
+  // Convierte un valor de <input type="datetime-local"> (sin TZ) a ISO UTC,
+  // asumiendo que el usuario lo ingresó en hora Guatemala (UTC-6). Sin esto
+  // el backend lo interpretaba como UTC → exámenes cerraban 6h antes de lo
+  // que el docente puso.
+  const gtLocalToUTC = (localStr) => {
+    if (!localStr) return null;
+    const hasSeconds = /T\d{2}:\d{2}:\d{2}/.test(localStr);
+    const padded = hasSeconds ? localStr : `${localStr}:00`;
+    return new Date(`${padded}-06:00`).toISOString();
+  };
+
   const handleSubmit = async (estadoFinal = 'BORRADOR') => {
     setSubmitting(true);
     setSubmitError(null);
@@ -153,8 +164,8 @@ export default function ExamenCrear() {
         descripcion: descripcion.trim() || null,
         rubrica_id: rubricaIdSel ? Number(rubricaIdSel) : null,
         tema_id: temaIdSel ? Number(temaIdSel) : null,
-        fecha_apertura: fechaApertura,
-        fecha_cierre: fechaCierre,
+        fecha_apertura: gtLocalToUTC(fechaApertura),
+        fecha_cierre: gtLocalToUTC(fechaCierre),
         duracion_minutos: Number(duracionMin),
         intentos_permitidos: Number(intentos),
         aprobacion_pct: Number(aprobacionPct),
@@ -260,20 +271,30 @@ export default function ExamenCrear() {
             onChange={(e) => setDescripcion(e.target.value)}
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input
-              label="Fecha y hora apertura"
-              type="datetime-local"
-              required
-              value={fechaApertura}
-              onChange={(e) => setFechaApertura(e.target.value)}
-            />
-            <Input
-              label="Fecha y hora cierre"
-              type="datetime-local"
-              required
-              value={fechaCierre}
-              onChange={(e) => setFechaCierre(e.target.value)}
-            />
+            <div>
+              <Input
+                label="Fecha y hora apertura"
+                type="datetime-local"
+                required
+                value={fechaApertura}
+                onChange={(e) => setFechaApertura(e.target.value)}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Formato dd/mm/aaaa, hh:mm — hora Guatemala
+              </p>
+            </div>
+            <div>
+              <Input
+                label="Fecha y hora cierre"
+                type="datetime-local"
+                required
+                value={fechaCierre}
+                onChange={(e) => setFechaCierre(e.target.value)}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Formato dd/mm/aaaa, hh:mm — hora Guatemala
+              </p>
+            </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input
