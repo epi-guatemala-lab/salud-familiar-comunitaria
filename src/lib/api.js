@@ -55,14 +55,19 @@ async function request(method, path, body, opts = {}) {
     if (token) headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const controller = new AbortController();
   const timeoutMs = opts.timeout || 30000;
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   let lastErr = null;
   const maxRetries = method === 'GET' ? (opts.maxRetries ?? 3) : (opts.maxRetries ?? 1);
 
+  // Cada intento usa su propio AbortController + timeout. Antes el controller
+  // y timeoutId se creaban una sola vez fuera del loop: si la 1ª tentativa
+  // tardaba 25s y caía, el timer global de 30s ya había vencido y los
+  // siguientes intentos abortaban inmediatamente con AbortError aunque la
+  // red hubiera vuelto.
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const res = await fetch(url, {
         method,
@@ -123,12 +128,19 @@ async function request(method, path, body, opts = {}) {
       clearTimeout(timeoutId);
       return data;
     } catch (err) {
+      // Limpiar el timer de ESTE intento siempre antes de seguir.
+      clearTimeout(timeoutId);
       lastErr = err;
 
-      // AbortError → timeout, no retry
+      // AbortError → timeout de este intento. Permitir retry — la red
+      // pudo haberse caído transitoriamente (no abortar todo el loop).
       if (err.name === 'AbortError') {
         lastErr = new ApiError('Tiempo de espera agotado', 0, 'TIMEOUT');
-        break;
+        if (attempt >= maxRetries) break;
+        // Backoff y reintentar con un controller fresco en la próxima vuelta.
+        const delay = Math.min(8000, 500 * Math.pow(2, attempt - 1)) + Math.random() * 200;
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
       }
 
       // Errores de red (fetch falla pre-respuesta) → ApiError status 0
@@ -148,7 +160,6 @@ async function request(method, path, body, opts = {}) {
     }
   }
 
-  clearTimeout(timeoutId);
   throw lastErr;
 }
 
