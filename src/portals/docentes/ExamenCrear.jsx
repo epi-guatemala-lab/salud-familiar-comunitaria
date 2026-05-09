@@ -184,6 +184,25 @@ export default function ExamenCrear() {
       };
       const res = await api.post('/api/docente/examenes', payload);
       const id = res?.id || res?.examen?.id;
+      // Backend POST /examenes siempre crea con estado=BORRADOR (ignora el
+      // payload.estado). Si el docente clickeó "Programar examen" o "Activar",
+      // tenemos que hacer la transición explícita con el endpoint dedicado.
+      // Sin esto, ningún examen llega a estudiantes (quedaba en BORRADOR
+      // forever — los docentes no podían activarlos sin SQL manual).
+      if (id && (estadoFinal === 'PROGRAMADO' || estadoFinal === 'ACTIVO')) {
+        try {
+          await api.post(`/api/docente/examenes/${id}/activar`, {});
+        } catch (activarErr) {
+          // Si falla la activación, el examen quedó BORRADOR. Avisamos pero
+          // navegamos para que el docente pueda revisar / reintentar.
+          setSubmitError(
+            `Examen creado pero no se pudo activar: ${activarErr?.message || 'error desconocido'}. Revisa la lista para intentar de nuevo.`
+          );
+          setSubmitting(false);
+          navigate(`/docentes/examenes`);
+          return;
+        }
+      }
       navigate(id ? `/docentes/examenes/${id}/intentos` : '/docentes/examenes');
     } catch (err) {
       setSubmitError(err?.message || 'No se pudo crear el examen');

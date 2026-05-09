@@ -26,6 +26,10 @@ export default function ExamenLanding() {
   const fingerprint = useFingerprint();
   const { requestFullscreen, isSupported: fsSupported } = useFullscreen();
 
+  // Si el docente NO requiere fullscreen, el ack queda pre-confirmado para
+  // que `allChecked` no bloquee el botón de iniciar. Antes el checkbox
+  // "Acepto activar pantalla completa" aparecía siempre, exigiendo aceptar
+  // una regla que el examen no aplica.
   const [acks, setAcks] = useState({
     rules: false,
     fs: false,
@@ -36,7 +40,11 @@ export default function ExamenLanding() {
   const [bootError, setBootError] = useState(null);
   const [powProgress, setPowProgress] = useState(null);
 
-  const allChecked = Object.values(acks).every(Boolean);
+  const fullscreenObligatorio = Boolean(Number(examen?.fullscreen_obligatorio));
+  // fs ack solo cuenta si fullscreen_obligatorio. Si no, lo damos por OK
+  // para no bloquear el botón "Iniciar examen".
+  const allChecked =
+    acks.rules && acks.env && acks.net && (fullscreenObligatorio ? acks.fs : true);
 
   const toggle = (key) => setAcks((prev) => ({ ...prev, [key]: !prev[key] }));
 
@@ -161,18 +169,24 @@ export default function ExamenLanding() {
           </ul>
         </section>
 
-        {/* Reglas */}
+        {/* Reglas — sólo las que aplican según flags configurados por el docente */}
         <section className="px-6 py-4 border-b bg-igss-50">
           <h2 className="font-bold text-igss-900 mb-3 flex items-center gap-2">
             <span aria-hidden="true">⚠️</span> Reglas importantes
           </h2>
           <ul className="space-y-1 text-sm text-gray-800">
-            {examen.fullscreen_obligatorio !== false && (
+            {Boolean(Number(examen.fullscreen_obligatorio)) && (
               <li>• Pantalla completa será forzada durante el examen.</li>
             )}
-            <li>• Cambiar de pestaña/ventana se cuenta como incidente.</li>
-            <li>• Copiar y pegar están bloqueados.</li>
-            <li>• Las herramientas de desarrollador serán detectadas.</li>
+            {Boolean(Number(examen.detectar_blur ?? 1)) && (
+              <li>• Cambiar de pestaña/ventana se cuenta como incidente.</li>
+            )}
+            {Boolean(Number(examen.bloqueo_copy_paste ?? examen.bloqueo_copiar_pegar ?? 1)) && (
+              <li>• Copiar y pegar están bloqueados.</li>
+            )}
+            {Boolean(Number(examen.detectar_devtools ?? 1)) && (
+              <li>• Las herramientas de desarrollador serán detectadas.</li>
+            )}
             <li>
               •{' '}
               <strong>
@@ -182,7 +196,7 @@ export default function ExamenLanding() {
             </li>
             <li>• El examen no se puede pausar.</li>
           </ul>
-          {!fsSupported && examen.fullscreen_obligatorio !== false && (
+          {!fsSupported && Boolean(Number(examen.fullscreen_obligatorio)) && (
             <p className="mt-3 text-sm bg-sfyc-amarillo/30 border border-sfyc-amarillo p-2 rounded">
               Tu navegador no soporta pantalla completa. Si el examen es modo ESTRICTO no
               podrás iniciarlo.
@@ -199,11 +213,13 @@ export default function ExamenLanding() {
               onChange={() => toggle('rules')}
               label="He leído y entiendo las reglas"
             />
-            <Ack
-              checked={acks.fs}
-              onChange={() => toggle('fs')}
-              label="Acepto activar pantalla completa"
-            />
+            {fullscreenObligatorio && (
+              <Ack
+                checked={acks.fs}
+                onChange={() => toggle('fs')}
+                label="Acepto activar pantalla completa"
+              />
+            )}
             <Ack
               checked={acks.env}
               onChange={() => toggle('env')}

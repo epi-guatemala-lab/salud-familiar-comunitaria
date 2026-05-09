@@ -25,6 +25,10 @@ export default function PreguntaView({
   disabled = false,
   onIncident,
   getElapsed,
+  // flags del examen — si NO están definidos, asumimos que aplican (legacy
+  // safe). El docente puede desactivarlos vía bloqueo_copy_paste/detectar_blur
+  // en la configuración del examen.
+  flags = {},
 }) {
   if (!pregunta) {
     return (
@@ -34,14 +38,23 @@ export default function PreguntaView({
     );
   }
 
+  // Convierte 0/1 (BD) o boolean a boolean. Si la prop no vino, default true.
+  const flagOn = (v, def = true) => (v == null ? def : Boolean(Number(v)));
+  const detectPaste = flagOn(flags.bloqueo_copy_paste);
+  const detectPasteLike = flagOn(flags.bloqueo_copy_paste);  // mismo flag
+  const detectFastTyping = flagOn(flags.detectar_blur);  // ESTRICTO suele activarlo
+
   const elapsed = () => (typeof getElapsed === 'function' ? getElapsed() : 0);
   const reportPaste = (extra = {}) => {
+    if (!detectPaste) return;
     onIncident?.('PASTE_ATTEMPT', 'ALTA', { pregunta_id: pregunta.id, ...extra });
   };
   const reportTooFast = (extra = {}) => {
+    if (!detectFastTyping) return;
     onIncident?.('TYPE_TOO_FAST', 'MEDIA', { pregunta_id: pregunta.id, ...extra });
   };
   const reportPasteLike = (extra = {}) => {
+    if (!detectPasteLike) return;
     onIncident?.('PASTE_LIKE', 'ALTA', { pregunta_id: pregunta.id, ...extra });
   };
 

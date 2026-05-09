@@ -112,8 +112,13 @@ export default function ExamenRunner() {
   }
 
   // ----- Render principal -----
-  const fullscreenRequired =
-    Boolean(intento.fullscreen_obligatorio) && !antiCheat.fullscreen;
+  // Convierte 0/1 INTEGER (BD) a boolean. Antes Boolean(0)=false, OK; Boolean(1)=true OK.
+  // El problema era que el banner y botón fullscreen aparecían sin chequear este flag.
+  const fullscreenObligatorio = Boolean(Number(intento.fullscreen_obligatorio));
+  const detectarBlur = intento.detectar_blur == null
+    ? true
+    : Boolean(Number(intento.detectar_blur));
+  const fullscreenRequired = fullscreenObligatorio && !antiCheat.fullscreen;
 
   const watermarkText = [
     user?.nombre || user?.nombre_completo || 'Estudiante',
@@ -153,7 +158,7 @@ export default function ExamenRunner() {
             max={intento.max_strikes || 3}
             score={antiCheat.score}
           />
-          {!antiCheat.fullscreen && (
+          {!antiCheat.fullscreen && fullscreenObligatorio && (
             <button
               type="button"
               onClick={antiCheat.requestFullscreen}
@@ -165,8 +170,10 @@ export default function ExamenRunner() {
         </div>
       </header>
 
-      {/* Banner amarillo si fullscreen no obligatorio falta */}
-      {!antiCheat.fullscreen && !intento.fullscreen_obligatorio && (
+      {/* Banner amarillo: solo si NO es obligatorio pero blur sí se detecta
+          (cuenta como incidente). Si los dos flags están off, no hay nada que
+          advertir y el banner no aparece. */}
+      {!antiCheat.fullscreen && !fullscreenObligatorio && detectarBlur && (
         <div className="bg-sfyc-amarillo text-igss-900 text-sm px-4 py-2 text-center">
           Estás fuera de pantalla completa. Cada salida cuenta como incidente.
         </div>
@@ -200,6 +207,13 @@ export default function ExamenRunner() {
               disabled={false}
               onIncident={antiCheat.reportIncident}
               getElapsed={intentoState.getElapsed}
+              flags={{
+                bloqueo_copy_paste: intento.bloqueo_copy_paste
+                  ?? intento.bloqueo_copiar_pegar,
+                detectar_blur: intento.detectar_blur,
+                detectar_devtools: intento.detectar_devtools,
+                modo: intento.modo_anti_trampa,
+              }}
             />
           )}
         </div>

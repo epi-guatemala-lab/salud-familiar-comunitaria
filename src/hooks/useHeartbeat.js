@@ -35,6 +35,10 @@ export function useHeartbeat({
   onConnectionLost = null,
 } = {}) {
   const failuresRef = useRef(0);
+  // Evita reportar HEARTBEAT_LOST en cada tick fallido subsiguiente.
+  // Antes: 4 fallos → 4 strikes en 2 minutos → auto-submit por strikes.
+  // Ahora: solo dispara una vez al cruzar el umbral; se resetea al éxito.
+  const reportedLostRef = useRef(false);
   const lockedRef = useRef(false);
   const onTickRef = useRef(onTick);
   const onForceSubmitRef = useRef(onForceSubmit);
@@ -59,6 +63,7 @@ export function useHeartbeat({
     if (!enabled || !intentoId) return undefined;
     lockedRef.current = false;
     failuresRef.current = 0;
+    reportedLostRef.current = false;
 
     let cancelled = false;
     let timer = null;
@@ -72,6 +77,7 @@ export function useHeartbeat({
           { headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : undefined }
         );
         failuresRef.current = 0;
+        reportedLostRef.current = false;
         onTickRef.current?.(resp);
         if (resp?.action === 'FORCE_SUBMIT') {
           lockedRef.current = true;
@@ -85,7 +91,11 @@ export function useHeartbeat({
           return;
         }
         failuresRef.current += 1;
-        if (failuresRef.current >= MAX_FAILURES_BEFORE_REPORT) {
+        if (
+          failuresRef.current >= MAX_FAILURES_BEFORE_REPORT
+          && !reportedLostRef.current
+        ) {
+          reportedLostRef.current = true;
           onConnectionLostRef.current?.(err);
         }
       }

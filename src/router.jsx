@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { BASE_URL } from './config/env';
 import LandingPage from './portals/landing/LandingPage';
 
@@ -65,6 +65,10 @@ const router = createBrowserRouter(
         { path: 'evaluaciones/:id/detalle', element: <EvaluacionDetalleDoc /> },
         { path: 'examenes', element: <ExamenesList /> },
         { path: 'examenes/nuevo', element: <ExamenCrear /> },
+        // /docentes/examenes/:id antes 404 (NO había ruta detail). Ahora
+        // redirige a la vista de intentos del examen, que es la única vista
+        // funcional individual.
+        { path: 'examenes/:id', element: <Navigate to="intentos" replace /> },
         { path: 'examenes/:id/intentos', element: <ExamenIntentos /> },
         { path: 'intentos/:id', element: <IntentoDetalle /> },
         { path: 'preguntas', element: <PreguntasBanco /> },

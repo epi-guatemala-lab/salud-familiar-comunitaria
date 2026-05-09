@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
 import Card from '../../components/ui/Card';
@@ -28,6 +28,14 @@ export default function ExamenesList() {
     : '/api/docente/examenes/mis';
   const { data, loading, error, refetch } = useApi(path, [estado]);
 
+  // Refetch al volver a la pestaña / window focus. Antes el docente
+  // creaba/activaba un examen, volvía a la lista y veía el estado stale.
+  useEffect(() => {
+    const handler = () => refetch();
+    window.addEventListener('focus', handler);
+    return () => window.removeEventListener('focus', handler);
+  }, [refetch]);
+
   const items = useMemo(() => {
     if (!data) return [];
     return Array.isArray(data) ? data : data.data || [];
@@ -42,12 +50,22 @@ export default function ExamenesList() {
             Exámenes y quizzes creados por usted
           </p>
         </div>
-        <Link
-          to="/docentes/examenes/nuevo"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-igss-700 text-white text-sm font-medium hover:bg-igss-800"
-        >
-          + Crear examen
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={refetch}
+            className="text-sm text-igss-700 hover:underline"
+            title="Refrescar lista"
+          >
+            ↻ Actualizar
+          </button>
+          <Link
+            to="/docentes/examenes/nuevo"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-igss-700 text-white text-sm font-medium hover:bg-igss-800"
+          >
+            + Crear examen
+          </Link>
+        </div>
       </div>
 
       <Card className="p-4">

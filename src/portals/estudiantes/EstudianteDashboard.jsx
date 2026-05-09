@@ -118,7 +118,9 @@ export default function EstudianteDashboard() {
               </p>
               {examenesActivos[0] && (
                 <p className="text-xs text-gray-600 mt-1">
-                  Próximo cierre: {countdown(examenesActivos[0].fecha_fin)}
+                  Próximo cierre: {countdown(
+                    examenesActivos[0].fecha_cierre || examenesActivos[0].fecha_fin
+                  )}
                 </p>
               )}
               {examenesActivos.length === 0 && (
@@ -173,7 +175,7 @@ export default function EstudianteDashboard() {
                   <Card key={ex.id} className="p-4 border border-igss-200">
                     <p className="text-sm font-semibold text-igss-900">{ex.titulo}</p>
                     <p className="text-xs text-gray-600 mt-1">
-                      Cierra {countdown(ex.fecha_fin)}
+                      Cierra {countdown((ex.fecha_cierre || ex.fecha_fin))}
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5">
                       Duración: {ex.duracion_minutos || '—'} min
