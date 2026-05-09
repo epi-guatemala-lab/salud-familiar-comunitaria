@@ -122,10 +122,13 @@ export default function LlenadoGenerica({ evaluacion, onRefetch }) {
     }
 
     const proyectado = totalPonderado;
+    // Umbrales del backend (services/evaluacion_calc.py:_level_threshold).
+    // Antes el frontend usaba 85/70/55 → mismatch: residente con 73% veía
+    // "Adecuado" en LlenadoGenerica pero la BD persistía "NECESITA_MEJORAR".
     let nivel = '—';
-    if (proyectado >= 85) nivel = 'Excelente';
-    else if (proyectado >= 70) nivel = 'Adecuado';
-    else if (proyectado >= 55) nivel = 'Necesita mejorar';
+    if (proyectado >= 90) nivel = 'Excelente';
+    else if (proyectado >= 75) nivel = 'Adecuado';
+    else if (proyectado >= 60) nivel = 'Necesita mejorar';
     else if (proyectado > 0) nivel = 'Insuficiente';
 
     return {
@@ -186,7 +189,7 @@ export default function LlenadoGenerica({ evaluacion, onRefetch }) {
       navigate(
         residenteId
           ? `/docentes/residentes/${residenteId}`
-          : '/docentes/evaluaciones',
+          : '/docentes/residentes',
       );
     } catch (err) {
       setFirmaError(err?.message || 'No se pudo firmar la evaluación');

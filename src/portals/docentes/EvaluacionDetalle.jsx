@@ -223,7 +223,7 @@ export default function EvaluacionDetalle() {
         </Button>
         <div className="flex gap-2">
           {isDraft && isOwnerOrAdmin && (
-            <Button onClick={() => navigate(`/docentes/evaluaciones/${id}/llenar`)}>
+            <Button onClick={() => navigate(`/docentes/evaluaciones/${id}`)}>
               Continuar llenando →
             </Button>
           )}

@@ -136,7 +136,7 @@ export default function EvaluacionNueva() {
       <div className="flex items-center justify-between">
         <div>
           <Link
-            to="/docentes/evaluaciones"
+            to="/docentes/residentes"
             className="text-sm text-igss-700 hover:text-igss-900"
           >
             ← Volver

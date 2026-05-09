@@ -135,10 +135,16 @@ export default function LlenadoSemaforo({ evaluacion, tipoLabel, onRefetch }) {
     const pct = maxPuntos > 0 ? (totalPuntos / maxPuntos) * 100 : 0;
     let nivel = '—';
     let nivelColor = 'gray';
-    if (pct >= 85) {
+    // Umbrales del backend (services/evaluacion_calc.py:_level_threshold).
+    // Antes el frontend usaba 85/70 sin "Excelente" → mismatch con BD
+    // que sí persiste EXCELENTE >=90.
+    if (pct >= 90) {
+      nivel = '🟢 Excelente';
+      nivelColor = 'verde';
+    } else if (pct >= 75) {
       nivel = '🟢 Adecuado';
       nivelColor = 'verde';
-    } else if (pct >= 70) {
+    } else if (pct >= 60) {
       nivel = '🟡 Necesita mejorar';
       nivelColor = 'amarillo';
     } else if (pct > 0) {
@@ -207,7 +213,7 @@ export default function LlenadoSemaforo({ evaluacion, tipoLabel, onRefetch }) {
       navigate(
         residenteId
           ? `/docentes/residentes/${residenteId}`
-          : '/docentes/evaluaciones',
+          : '/docentes/residentes',
       );
     } catch (err) {
       setFirmaError(err?.message || 'No se pudo firmar la evaluación');

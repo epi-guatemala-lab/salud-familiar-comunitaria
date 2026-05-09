@@ -40,7 +40,7 @@ export default function DocenteDashboard() {
           icon="🟡"
           value={data?.evaluaciones_pendientes ?? 0}
           label="Evaluaciones pendientes"
-          to="/docentes/evaluaciones?estado=DRAFT"
+          to="/docentes/residentes"
           accent="amarillo"
         />
         <KpiCard
@@ -101,7 +101,7 @@ export default function DocenteDashboard() {
             Próximas evaluaciones programadas
           </h2>
           <Link
-            to="/docentes/evaluaciones"
+            to="/docentes/residentes"
             className="text-xs font-medium text-igss-700 hover:text-igss-900"
           >
             Ver todas →
