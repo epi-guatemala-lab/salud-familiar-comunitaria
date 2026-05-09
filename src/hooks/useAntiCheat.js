@@ -54,10 +54,18 @@ export function useAntiCheat({
     // Flags individuales por detector. El backend los expone como 0/1 INTEGER
     // en la respuesta de /api/estudiante/intentos/start. Por default ON
     // (modo NORMAL/ESTRICTO los respetan); modo LAXO los apaga todos.
+    //
+    // IMPORTANTE: el campo del backend para paste es `bloqueo_copy_paste`
+    // (NO `detectar_paste`). Antes destructurábamos un nombre que no existía
+    // → caía al default true → paste seguía bloqueado aunque flag=0.
+    // También aceptamos `bloqueo_copiar_pegar` (alias usado en otras
+    // partes del código y wizard ExamenCrear).
     detectar_blur: detectarBlurRaw = true,
     detectar_devtools: detectarDevtoolsRaw = true,
     detectar_keys: detectarKeysRaw = true,
-    detectar_paste: detectarPasteRaw = true,
+    bloqueo_copy_paste: bloqueoCopyPasteRaw,
+    bloqueo_copiar_pegar: bloqueoCopiarPegarRaw,
+    detectar_paste: detectarPasteLegacy,
   } = config;
 
   // Convierte 0/1 INTEGER (SQLite) a boolean. `null`/`undefined` → true (legacy).
@@ -65,7 +73,13 @@ export function useAntiCheat({
   const detectarBlur = toBool(detectarBlurRaw);
   const detectarDevtools = toBool(detectarDevtoolsRaw);
   const detectarKeys = toBool(detectarKeysRaw);
-  const detectarPaste = toBool(detectarPasteRaw);
+  // Paste: prioriza bloqueo_copy_paste (backend canónico), después
+  // bloqueo_copiar_pegar (legacy wizard), por último detectar_paste.
+  // Si NINGUNO viene definido, default true (legacy safe).
+  const pasteFlagRaw = bloqueoCopyPasteRaw
+    ?? bloqueoCopiarPegarRaw
+    ?? detectarPasteLegacy;
+  const detectarPaste = toBool(pasteFlagRaw);
 
   // Gate global. Modo LAXO desactiva TODOS los detectores opcionales,
   // pero TIME_EXCEEDED y AUTO_SUBMIT_* siempre pasan (passthrough en
