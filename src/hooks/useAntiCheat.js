@@ -51,8 +51,25 @@ export function useAntiCheat({
     modo = 'NORMAL',
     max_strikes: maxStrikes = 3,
     fullscreen_obligatorio: fullscreenObligatorio = true,
+    // Flags individuales por detector. El backend los expone como 0/1 INTEGER
+    // en la respuesta de /api/estudiante/intentos/start. Por default ON
+    // (modo NORMAL/ESTRICTO los respetan); modo LAXO los apaga todos.
+    detectar_blur: detectarBlurRaw = true,
+    detectar_devtools: detectarDevtoolsRaw = true,
+    detectar_keys: detectarKeysRaw = true,
+    detectar_paste: detectarPasteRaw = true,
   } = config;
 
+  // Convierte 0/1 INTEGER (SQLite) a boolean. `null`/`undefined` → true (legacy).
+  const toBool = (v) => (v == null ? true : Boolean(Number(v)));
+  const detectarBlur = toBool(detectarBlurRaw);
+  const detectarDevtools = toBool(detectarDevtoolsRaw);
+  const detectarKeys = toBool(detectarKeysRaw);
+  const detectarPaste = toBool(detectarPasteRaw);
+
+  // Gate global. Modo LAXO desactiva TODOS los detectores opcionales,
+  // pero TIME_EXCEEDED y AUTO_SUBMIT_* siempre pasan (passthrough en
+  // reportIncident más abajo).
   const enabled = modo !== 'LAXO';
 
   const [strikes, setStrikes] = useState(0);
@@ -232,7 +249,7 @@ export function useAntiCheat({
 
   // ----- Blur / focus / visibility -----
   useEffect(() => {
-    if (!enabled) return undefined;
+    if (!enabled || !detectarBlur) return undefined;
     const onBlur = () => {
       blurStartRef.current = Date.now();
     };
@@ -255,11 +272,11 @@ export function useAntiCheat({
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVis);
     };
-  }, [enabled, reportIncident]);
+  }, [enabled, detectarBlur, reportIncident]);
 
   // ----- Copy / paste / cut / contextmenu -----
   useEffect(() => {
-    if (!enabled) return undefined;
+    if (!enabled || !detectarPaste) return undefined;
     const handlers = {};
     const events = ['copy', 'cut', 'paste', 'contextmenu'];
     events.forEach((ev) => {
@@ -276,11 +293,11 @@ export function useAntiCheat({
     return () => {
       events.forEach((ev) => document.removeEventListener(ev, handlers[ev]));
     };
-  }, [enabled, reportIncident]);
+  }, [enabled, detectarPaste, reportIncident]);
 
   // ----- Forbidden keys (F12, Ctrl+Shift+I, Ctrl+U, Ctrl+P, Ctrl+S, Cmd+P/S) -----
   useEffect(() => {
-    if (!enabled) return undefined;
+    if (!enabled || !detectarKeys) return undefined;
     const onKey = (e) => {
       const k = e.key?.toUpperCase?.() || '';
       const blocked =
@@ -300,11 +317,11 @@ export function useAntiCheat({
     };
     document.addEventListener('keydown', onKey, true);
     return () => document.removeEventListener('keydown', onKey, true);
-  }, [enabled, reportIncident]);
+  }, [enabled, detectarKeys, reportIncident]);
 
   // ----- DevTools detection (resize threshold + console getter trap) -----
   useEffect(() => {
-    if (!enabled) return undefined;
+    if (!enabled || !detectarDevtools) return undefined;
     let reported = false;
     // Damos 5 segundos de gracia tras montar para evitar falsos positivos
     // del propio request-fullscreen reorganizando el viewport.
@@ -346,7 +363,7 @@ export function useAntiCheat({
     };
     const id = setInterval(detect, DEVTOOLS_POLL_MS);
     return () => clearInterval(id);
-  }, [enabled, reportIncident]);
+  }, [enabled, detectarDevtools, reportIncident]);
 
   // ----- beforeunload guard (pregunta antes de cerrar) -----
   useEffect(() => {
