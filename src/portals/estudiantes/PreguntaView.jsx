@@ -51,7 +51,7 @@ export default function PreguntaView({
       data-pregunta-id={pregunta.id}
     >
       <header className="mb-4">
-        <h2 className="text-lg font-semibold text-igss-900">
+        <h2 className="text-lg font-semibold text-igss-900 whitespace-pre-wrap">
           {pregunta.orden_en_intento || pregunta.numero || '?'}.{' '}
           {pregunta.enunciado}
         </h2>

@@ -83,17 +83,25 @@ export default function ExamenesActivos() {
                 <h2 className="font-semibold text-lg text-igss-900 truncate">
                   {ex.titulo}
                 </h2>
-                <span
-                  className={`text-xs font-semibold px-2 py-0.5 rounded ${
-                    MODO_BADGE[ex.modo] || MODO_BADGE.NORMAL
-                  }`}
-                >
-                  {ex.modo}
-                </span>
+                {(() => {
+                  // Backend devuelve `modo_anti_trampa`, no `modo`. Antes
+                  // intentábamos leer `ex.modo` (undefined) → badge vacío.
+                  const modo = ex.modo_anti_trampa || ex.modo || 'NORMAL';
+                  return (
+                    <span
+                      className={`text-xs font-semibold px-2 py-0.5 rounded ${
+                        MODO_BADGE[modo] || MODO_BADGE.NORMAL
+                      }`}
+                    >
+                      {modo}
+                    </span>
+                  );
+                })()}
               </div>
               <p className="text-sm text-gray-600 mt-1">
                 {ex.total_preguntas} preguntas · {ex.duracion_minutos} minutos
-                {ex.docente && ` · ${ex.docente}`}
+                {(ex.creado_por_docente_nombre || ex.docente) &&
+                  ` · ${ex.creado_por_docente_nombre || ex.docente}`}
               </p>
               <p className="text-sm mt-1">
                 <span className="text-gray-500">Cierra en:</span>{' '}

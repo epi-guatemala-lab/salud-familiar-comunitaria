@@ -65,7 +65,11 @@ export default function StrikeWarningModal({
             {latest?.severidad && (
               <div className="flex justify-between">
                 <span>Severidad:</span>
-                <span className="font-bold">{latest.severidad}</span>
+                <span className="font-bold">
+                  {String(latest.severidad).toUpperCase() === 'CRITICA'
+                    ? 'CRÍTICA'
+                    : latest.severidad}
+                </span>
               </div>
             )}
           </div>

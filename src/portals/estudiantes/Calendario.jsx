@@ -257,7 +257,18 @@ export default function Calendario() {
       {selectedDay && (
         <Card className="p-4">
           <h3 className="text-sm font-semibold text-igss-900 mb-2">
-            Eventos del {selectedDay}
+            Eventos del{' '}
+            {(() => {
+              // selectedDay = "2026-06-02" → "2 de junio de 2026"
+              const [y, m, d] = String(selectedDay).split('-').map(Number);
+              if (!y || !m || !d) return selectedDay;
+              const dt = new Date(y, m - 1, d);
+              return dt.toLocaleDateString('es-GT', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              });
+            })()}
           </h3>
           <ul className="space-y-1.5">
             {(eventosPorDia.get(selectedDay) || []).map((ev, i) => (

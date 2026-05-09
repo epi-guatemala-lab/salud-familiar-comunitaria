@@ -106,7 +106,11 @@ export default function ExamenLanding() {
     );
   }
 
-  const modoInfo = MODOS[examen.modo] || MODOS.NORMAL;
+  // Backend devuelve `modo_anti_trampa`, no `modo`. El campo `modo` legacy
+  // se mantiene como fallback por compat.
+  const modoActual = examen.modo_anti_trampa || examen.modo || 'NORMAL';
+  const modoInfo = MODOS[modoActual] || MODOS.NORMAL;
+  const maxStrikes = examen.max_strikes || 3;
 
   return (
     <div className="max-w-2xl mx-auto p-4 sm:p-6">
@@ -170,8 +174,11 @@ export default function ExamenLanding() {
             <li>• Copiar y pegar están bloqueados.</li>
             <li>• Las herramientas de desarrollador serán detectadas.</li>
             <li>
-              • <strong>{examen.max_strikes || 3} strikes</strong> activan el envío
-              automático del examen con las respuestas registradas.
+              •{' '}
+              <strong>
+                {maxStrikes} {maxStrikes === 1 ? 'strike activa' : 'strikes activan'}
+              </strong>{' '}
+              el envío automático del examen con las respuestas registradas.
             </li>
             <li>• El examen no se puede pausar.</li>
           </ul>
