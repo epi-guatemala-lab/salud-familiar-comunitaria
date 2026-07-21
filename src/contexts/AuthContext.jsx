@@ -33,8 +33,13 @@ export function AuthProvider({ children }) {
         { username, password, fingerprint },
         { auth: false }
       );
-      applyAuth(res.token, res.user);
-      return res;
+      const userWithFlags = {
+        ...res.user,
+        password_reset_required:
+          res.password_reset_required ?? res.user?.password_reset_required ?? false,
+      };
+      applyAuth(res.token, userWithFlags);
+      return { ...res, user: userWithFlags };
     },
     [applyAuth]
   );
@@ -49,6 +54,21 @@ export function AuthProvider({ children }) {
     setTokenState(null);
     setUserState(null);
   }, []);
+
+  const updateUser = useCallback((nextUser) => {
+    setUserState((current) => {
+      const merged = typeof nextUser === 'function' ? nextUser(current) : nextUser;
+      setStoredUser(merged);
+      return merged;
+    });
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    const latest = await api.get('/api/auth/me');
+    const next = latest.user || latest;
+    updateUser((current) => ({ ...current, ...next }));
+    return next;
+  }, [updateUser]);
 
   // Auto-logout cuando el token expira
   useEffect(() => {
@@ -113,6 +133,8 @@ export function AuthProvider({ children }) {
         user,
         login,
         logout,
+        updateUser,
+        refreshUser,
         isAuthenticated: !!token && !!user,
       }}
     >

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { api } from '../../lib/api';
 import { useToast } from '../../contexts/ToastContext';
 
@@ -6,7 +6,6 @@ import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
 import Textarea from '../../components/ui/Textarea';
 import Button from '../../components/ui/Button';
-import Checkbox from '../../components/ui/Checkbox';
 
 const TIPOS = [
   { value: 'MCQ', label: 'Opción única (radio)' },

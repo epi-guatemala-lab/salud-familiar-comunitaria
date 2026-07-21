@@ -5,7 +5,7 @@
 //   - Exámenes (tabla de intentos)
 //   - Resumen (gráficas de progreso, comparativa con cohorte anonimizada)
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
 

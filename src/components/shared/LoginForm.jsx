@@ -4,8 +4,8 @@ import { useToast } from '../../contexts/ToastContext';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 
-export default function LoginForm({ rolEsperado, onSuccess }) {
-  const { login } = useAuth();
+export default function LoginForm({ rolEsperado, validateAccess, onSuccess }) {
+  const { login, logout } = useAuth();
   const toast = useToast();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -22,7 +22,11 @@ export default function LoginForm({ rolEsperado, onSuccess }) {
     setError(null);
     try {
       const res = await login(username.trim().toLowerCase(), password);
-      if (rolEsperado && res.user?.rol !== rolEsperado && res.user?.rol !== 'admin') {
+      const roleDenied =
+        rolEsperado && res.user?.rol !== rolEsperado && res.user?.rol !== 'admin';
+      const accessDenied = validateAccess && !validateAccess(res.user);
+      if (roleDenied || accessDenied) {
+        await logout();
         setError('Esta cuenta no tiene acceso a este portal');
         return;
       }

@@ -13,3 +13,10 @@ export const BASE_URL = fallback(import.meta.env?.BASE_URL, '/salud-familiar-com
 
 export const IS_DEV = !!import.meta.env?.DEV;
 export const IS_PROD = !!import.meta.env?.PROD;
+
+const enabledValues = new Set(['1', 'true', 'yes', 'on']);
+export const BITACORA_ENABLED = enabledValues.has(
+  String(
+    fallback(import.meta.env?.VITE_BITACORA_ENABLED, IS_PROD ? 'false' : 'true')
+  ).toLowerCase()
+);

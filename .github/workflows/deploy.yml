@@ -19,23 +19,46 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Scan versionable files without exposing values
+        run: python scripts/check_secrets.py
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
       - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Unit and component tests
+        run: npm test
+      - name: Install browser for E2E
+        run: npx playwright install --with-deps chromium
+      - name: Real-browser E2E
+        run: npm run test:e2e
       - name: Build
         run: npm run build
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
           VITE_BASE_PATH: /salud-familiar-comunitaria/
           VITE_VERSION: ${{ github.sha }}
+          # Fail-closed: crear la variable del repositorio con valor `true`
+          # únicamente después de aceptar migración, restore y smoke tests.
+          VITE_BITACORA_ENABLED: ${{ vars.VITE_BITACORA_ENABLED || 'false' }}
       - name: SPA fallback for GitHub Pages
         run: cp dist/index.html dist/404.html
       - uses: actions/configure-pages@v4
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+      - name: Upload E2E diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sfyc-playwright-diagnostics
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
 
   deploy:
     needs: build

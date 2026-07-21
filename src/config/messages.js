@@ -22,7 +22,7 @@ export const M = {
     login: 'Iniciar sesión',
     logout: 'Cerrar sesión',
     username: 'Usuario',
-    password: 'Contraseña',
+    password: 'Contraseña', // pragma: allowlist secret — etiqueta de interfaz
     invalidCredentials: 'Credenciales inválidas',
     sessionExpired: 'Su sesión ha expirado, vuelva a iniciar sesión',
   },

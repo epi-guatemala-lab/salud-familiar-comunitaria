@@ -4,6 +4,13 @@ export const ROLES = {
   ADMIN: 'admin',
   DOCENTE: 'docente',
   ESTUDIANTE: 'estudiante',
+  PERSONAL: 'personal',
+};
+
+export const BITACORA_ROLES = {
+  ASISTENTE: 'bitacora.asistente',
+  DIRECTOR: 'bitacora.director',
+  SECRETARIA: 'bitacora.secretaria',
 };
 
 export const TIPO_PREGUNTA = {
@@ -19,7 +26,7 @@ export const ESCALA_TIPO = {
 };
 
 export const STORAGE_KEYS = {
-  TOKEN: 'sfyc_token',
+  TOKEN: 'sfyc_token', // pragma: allowlist secret — nombre de clave, no credencial
   USER: 'sfyc_user',
   OFFLINE_QUEUE: 'sfyc_offline_queue',
   ENCUESTA_DRAFT: 'sfyc_encuesta_draft',

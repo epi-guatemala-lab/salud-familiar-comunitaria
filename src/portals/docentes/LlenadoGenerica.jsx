@@ -26,7 +26,7 @@ import RubricaItemRadios from './RubricaItemRadios';
  *   observaciones, fortalezas, areas_mejora
  * }
  */
-export default function LlenadoGenerica({ evaluacion, onRefetch }) {
+export default function LlenadoGenerica({ evaluacion, onRefetch: _onRefetch }) {
   const navigate = useNavigate();
   const isReadOnly = evaluacion.estado !== 'DRAFT';
 
@@ -46,7 +46,10 @@ export default function LlenadoGenerica({ evaluacion, onRefetch }) {
   const [firmaError, setFirmaError] = useState(null);
   const skipSaveOnceRef = useRef(true);
 
-  const dimensiones = evaluacion.rubrica?.dimensiones || [];
+  const dimensiones = useMemo(
+    () => evaluacion.rubrica?.dimensiones || [],
+    [evaluacion.rubrica?.dimensiones]
+  );
 
   // Debounce de las respuestas para autosave
   const debouncedRespuestas = useDebounce(respuestas, 1000);
@@ -102,7 +105,6 @@ export default function LlenadoGenerica({ evaluacion, onRefetch }) {
   // Cálculo en tiempo real
   const calculo = useMemo(() => {
     let totalPonderado = 0;
-    let pesoLleno = 0;
     let itemsRequeridos = 0;
     let itemsLlenos = 0;
     const dimDetalles = [];
@@ -126,7 +128,6 @@ export default function LlenadoGenerica({ evaluacion, onRefetch }) {
         promedio != null ? (promedio / 4) * pesoNum : null;
       if (aporte != null) {
         totalPonderado += aporte;
-        pesoLleno += pesoNum * (count / Math.max(items.length, 1));
       }
       dimDetalles.push({
         ...dim,

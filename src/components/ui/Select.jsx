@@ -22,7 +22,7 @@ export default function Select({
       )}
       <select
         id={selId}
-        className={`border rounded-md p-2 bg-white transition focus:outline-none focus:ring-1 focus:ring-igss-500
+        className={`min-h-11 border rounded-md p-2 bg-white transition focus:outline-none focus:ring-1 focus:ring-igss-500
           ${error ? 'border-red-500' : 'border-gray-300 focus:border-igss-500'}`}
         {...rest}
       >

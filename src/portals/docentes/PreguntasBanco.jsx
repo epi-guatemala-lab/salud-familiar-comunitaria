@@ -2,7 +2,6 @@ import { useMemo, useRef, useState } from 'react';
 import { VITE_API_URL } from '../../config/env';
 import { useApi } from '../../hooks/useApi';
 import { useToast } from '../../contexts/ToastContext';
-import { api } from '../../lib/api';
 
 import Card from '../../components/ui/Card';
 import Input from '../../components/ui/Input';

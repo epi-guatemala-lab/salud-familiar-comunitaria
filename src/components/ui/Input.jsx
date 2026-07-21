@@ -17,7 +17,7 @@ export default function Input({
       )}
       <input
         id={inputId}
-        className={`border rounded-md p-2 transition focus:outline-none focus:ring-1 focus:ring-igss-500
+        className={`min-h-11 border rounded-md p-2 transition focus:outline-none focus:ring-1 focus:ring-igss-500
           ${error ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-igss-500'}`}
         {...rest}
       />
