@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../contexts/AuthContext';
 import Card from '../../components/ui/Card';
-import Spinner from '../../components/ui/Spinner';
 import { formatFechaLarga } from '../../lib/format';
 
 /**

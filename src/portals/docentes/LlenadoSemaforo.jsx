@@ -19,12 +19,12 @@ import RubricaItemRadios from './RubricaItemRadios';
  *   tipoLabel: 'GYO' | 'Pediatría'
  *   onRefetch: () => void
  */
-export default function LlenadoSemaforo({ evaluacion, tipoLabel, onRefetch }) {
+export default function LlenadoSemaforo({ evaluacion, tipoLabel, onRefetch: _onRefetch }) {
   const navigate = useNavigate();
   const isReadOnly = evaluacion.estado !== 'DRAFT';
 
   const tema = evaluacion.tema || evaluacion.rubrica?.tema || {};
-  const dimensiones = tema.dimensiones || [];
+  const dimensiones = useMemo(() => tema.dimensiones || [], [tema.dimensiones]);
 
   const [respuestas, setRespuestas] = useState(() => evaluacion.items || {});
   const [comentariosItem, setComentariosItem] = useState(

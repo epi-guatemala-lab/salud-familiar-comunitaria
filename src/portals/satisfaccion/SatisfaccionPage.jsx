@@ -65,7 +65,6 @@ export default function SatisfaccionPage() {
 
   // Progreso visual: % de items respondidos (sobre 18).
   const respondidos = ITEMS_18.filter((i) => formData[i.field] != null).length;
-  const totalProgress = (respondidos / ITEMS_18.length) * 100;
 
   // KPI vivo solo informativo en footer.
   const kpiLocal = useMemo(() => {

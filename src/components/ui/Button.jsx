@@ -23,7 +23,7 @@ export default function Button({
   ...rest
 }) {
   const classes = [
-    'rounded-lg font-semibold transition shadow-sm',
+    'min-h-11 rounded-lg font-semibold transition shadow-sm',
     VARIANTS[variant] || VARIANTS.primary,
     SIZES[size] || SIZES.md,
     fullWidth ? 'w-full' : '',

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
 import { api } from '../../lib/api';
 import { useToast } from '../../contexts/ToastContext';
@@ -79,7 +79,6 @@ function relSegundos(start, t) {
  */
 export default function IntentoDetalle() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const toast = useToast();
 
   const { data, loading, error, refetch } = useApi(

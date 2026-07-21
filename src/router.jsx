@@ -1,5 +1,5 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import { BASE_URL } from './config/env';
+import { BASE_URL, BITACORA_ENABLED } from './config/env';
 import LandingPage from './portals/landing/LandingPage';
 
 // Portal 1 — Satisfacción (público)
@@ -35,9 +35,67 @@ import EvaluacionDetalleEst from './portals/estudiantes/EvaluacionDetalle';
 import Calendario from './portals/estudiantes/Calendario';
 import Boleta from './portals/estudiantes/Boleta';
 
+// Portal 4 — Bitácora SFyC
+import BitacoraLogin from './portals/bitacora/BitacoraLogin';
+import ChangePasswordPage from './portals/bitacora/ChangePasswordPage';
+import BitacoraLayout from './portals/bitacora/BitacoraLayout';
+import DashboardPage from './portals/bitacora/pages/DashboardPage';
+import ActivitiesPage from './portals/bitacora/pages/ActivitiesPage';
+import ActivityWizardPage from './portals/bitacora/pages/ActivityWizardPage';
+import CalendarPage from './portals/bitacora/pages/CalendarPage';
+import ControlPage from './portals/bitacora/pages/ControlPage';
+import NotificationsPage from './portals/bitacora/pages/NotificationsPage';
+import { canAccessBitacora, hasBitacoraCapability, isBitacoraSecretary } from './lib/permissions';
+
 // Layout
 import ProtectedRoute from './components/layout/ProtectedRoute';
 import NotFound from './components/layout/NotFound';
+
+const bitacoraRoutes = BITACORA_ENABLED
+  ? [
+      { path: '/bitacora/login', element: <BitacoraLogin /> },
+      {
+        path: '/bitacora/cambiar-contrasena',
+        element: (
+          <ProtectedRoute loginPath="/bitacora/login" accessCheck={canAccessBitacora}>
+            <ChangePasswordPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/bitacora',
+        element: (
+          <ProtectedRoute loginPath="/bitacora/login" accessCheck={canAccessBitacora}>
+            <BitacoraLayout />
+          </ProtectedRoute>
+        ),
+        children: [
+          { index: true, element: <DashboardPage /> },
+          { path: 'calendario', element: <CalendarPage /> },
+          { path: 'actividades', element: <ActivitiesPage /> },
+          {
+            path: 'actividades/nueva',
+            element: (
+              <ProtectedRoute loginPath="/bitacora/login" accessCheck={(user) => hasBitacoraCapability(user, 'create')}>
+                <ActivityWizardPage />
+              </ProtectedRoute>
+            ),
+          },
+          { path: 'actividades/:id', element: <ActivityWizardPage /> },
+          { path: 'actividades/:id/editar', element: <ActivityWizardPage /> },
+          {
+            path: 'control',
+            element: (
+              <ProtectedRoute loginPath="/bitacora/login" accessCheck={isBitacoraSecretary}>
+                <ControlPage />
+              </ProtectedRoute>
+            ),
+          },
+          { path: 'notificaciones', element: <NotificationsPage /> },
+        ],
+      },
+    ]
+  : [{ path: '/bitacora/*', element: <Navigate to="/" replace /> }];
 
 const router = createBrowserRouter(
   [
@@ -100,6 +158,9 @@ const router = createBrowserRouter(
         { path: 'boleta', element: <Boleta /> },
       ],
     },
+
+    // Portal 4 — Bitácora (JWT individual + RBAC de dominio)
+    ...bitacoraRoutes,
 
     { path: '*', element: <NotFound /> },
   ],

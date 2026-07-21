@@ -182,7 +182,10 @@ if (typeof window !== 'undefined') {
     }
     if (!location.pathname.includes('/login')) {
       // Solo redirigir si no estamos ya en login
-      const target = BASE_URL || '/';
+      const inBitacora = location.pathname.includes('/bitacora');
+      const target = inBitacora
+        ? `${BASE_URL.replace(/\/?$/, '/')}bitacora/login`
+        : (BASE_URL || '/');
       if (location.pathname !== target) {
         location.href = target;
       }

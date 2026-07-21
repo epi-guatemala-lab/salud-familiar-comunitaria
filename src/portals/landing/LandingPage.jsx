@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
+import { BITACORA_ENABLED } from '../../config/env';
 
 const CARDS = [
   {
@@ -31,6 +32,16 @@ const CARDS = [
     cta: 'Iniciar sesión residente',
     color: 'border-igss-red hover:bg-red-50',
   },
+  {
+    to: '/bitacora/login',
+    emoji: '🗓️',
+    titulo: 'Bitácora SFyC',
+    descripcion:
+      'Programar actividades, documentar resultados, dar seguimiento a acuerdos y revisar la completitud institucional.',
+    cta: 'Abrir Bitácora',
+    color: 'border-blue-600 hover:bg-blue-50',
+    feature: 'bitacora',
+  },
 ];
 
 export default function LandingPage() {
@@ -48,8 +59,8 @@ export default function LandingPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {CARDS.map((c) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          {CARDS.filter((c) => c.feature !== 'bitacora' || BITACORA_ENABLED).map((c) => (
             <Link
               key={c.to}
               to={c.to}
