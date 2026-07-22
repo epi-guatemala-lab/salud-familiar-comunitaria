@@ -54,7 +54,9 @@ src/
 
 GitHub Action en `.github/workflows/deploy.yml`:
 - Trigger: push a `main` o manual.
-- Ejecuta lint, pruebas y build con `VITE_BASE_PATH=/salud-familiar-comunitaria/`; copia `index.html` a `404.html` para el fallback SPA de GitHub Pages.
+- Ejecuta lint, pruebas y build con `VITE_BASE_PATH=/salud-familiar-comunitaria/`;
+  genera `404.html` y entradas estáticas para que los enlaces directos conocidos
+  respondan 200 en GitHub Pages antes de hidratar la SPA.
 - Sube a Pages.
 - Compila Bitácora deshabilitada salvo que la variable de repositorio
   `VITE_BITACORA_ENABLED` sea exactamente `true`.

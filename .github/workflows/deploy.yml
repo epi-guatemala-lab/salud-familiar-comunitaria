@@ -43,8 +43,8 @@ jobs:
           # Fail-closed: crear la variable del repositorio con valor `true`
           # únicamente después de aceptar migración, restore y smoke tests.
           VITE_BITACORA_ENABLED: ${{ vars.VITE_BITACORA_ENABLED || 'false' }}
-      - name: SPA fallback for GitHub Pages
-        run: cp dist/index.html dist/404.html
+      - name: Prepare SPA entrypoints for GitHub Pages
+        run: npm run build:pages
       - uses: actions/configure-pages@v4
       - uses: actions/upload-pages-artifact@v3
         with:
