@@ -373,14 +373,38 @@ export async function installScenarioApi(page, options = {}) {
       await json(route, { items: activity?.evidencias || [], total: activity?.evidencias?.length || 0, page: 1, limit: 200 });
       return;
     }
-    const actionMatch = path.match(/^\/api\/bitacora\/actividades\/(\d+)\/(programar|marcar-realizada|marcar-no-realizada|cancelar|enviar|devolver|completar|reabrir)$/);
+    const actionMatch = path.match(/^\/api\/bitacora\/actividades\/(\d+)\/(programar|marcar-realizada|marcar-no-realizada|cancelar|enviar|devolver|completar|reabrir|archivar)$/);
     if (actionMatch && method === 'POST') {
       if (state.conflicts.delete(path)) {
         await json(route, { detail: { code: 'VERSION_CONFLICT', detail: 'La actividad cambió.' } }, 409);
         return;
       }
       const activity = state.activities.find((item) => item.id === Number(actionMatch[1]));
-      Object.assign(activity, actionState(activity, actionMatch[2]), { version: activity.version + 1 });
+      if (actionMatch[2] === 'archivar') {
+        const archivedAt = '2026-07-22T15:00:00.000Z';
+        Object.assign(activity, {
+          archivada: true,
+          archivada_at: archivedAt,
+          version: activity.version + 1,
+        });
+        await json(route, {
+          ok: true,
+          id: activity.id,
+          archivada: true,
+          archivada_at: archivedAt,
+          version: activity.version,
+        });
+        return;
+      }
+      const actionUpdate = actionState(activity, actionMatch[2]);
+      if (actionMatch[2] === 'devolver') {
+        actionUpdate.ultima_devolucion = {
+          observaciones: body?.observaciones || body?.motivo || '',
+          created_at: '2026-07-22T14:30:00.000Z',
+          usuario_nombre: state.currentUser?.nombre_completo || state.currentUser?.username || '',
+        };
+      }
+      Object.assign(activity, actionUpdate, { version: activity.version + 1 });
       await json(route, activity);
       return;
     }

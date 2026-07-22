@@ -61,11 +61,12 @@ def main() -> None:
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys=ON")
         for username, name, base_role, domain_role in accounts:
+            must_change = 0 if domain_role else 1
             cursor = conn.execute(
                 """INSERT INTO usuarios_sfyc
                    (username,password_hash,rol,activo,password_reset_required)
-                   VALUES (?,?,?,1,1)""",
-                (username, hash_password(TEST_PASSWORD), base_role),
+                   VALUES (?,?,?,1,?)""",
+                (username, hash_password(TEST_PASSWORD), base_role, must_change),
             )
             user_id = int(cursor.lastrowid)
             conn.execute(

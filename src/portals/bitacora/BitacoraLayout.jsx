@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import LogoutButton from '../../components/shared/LogoutButton';
 import { useAuth } from '../../contexts/AuthContext';
 import { bitacoraApi } from './api';
 import { hasBitacoraCapability, isAdmin, isBitacoraSecretary, userRoles } from '../../lib/permissions';
-import { normalizePaginated } from './model';
+import { normalizePaginated, UNSAVED_CHANGES_MESSAGE } from './model';
 import { EVENTS } from '../../config/constants';
 
 function roleLabel(user) {
@@ -21,6 +21,7 @@ export default function BitacoraLayout() {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [unread, setUnread] = useState(0);
+  const [wizardHasUnsavedChanges, setWizardHasUnsavedChanges] = useState(false);
   const menuButtonRef = useRef(null);
   const navigationRef = useRef(null);
   const secretary = isBitacoraSecretary(user);
@@ -68,10 +69,6 @@ export default function BitacoraLayout() {
     };
   }, [menuOpen]);
 
-  if (user?.password_reset_required) {
-    return <Navigate to="/bitacora/cambiar-contrasena" replace />;
-  }
-
   const links = [
     { to: '/bitacora', label: 'Inicio', icon: '⌂', end: true },
     { to: '/bitacora/calendario', label: 'Calendario', icon: '▦' },
@@ -102,7 +99,10 @@ export default function BitacoraLayout() {
               <div className="text-sm font-semibold text-gray-900">{user?.nombre || user?.nombre_completo || user?.username}</div>
               <div className="text-xs text-gray-600">{roleLabel(user)}</div>
             </div>
-            <LogoutButton className="min-h-11" />
+            <LogoutButton
+              className="min-h-11"
+              confirmMessage={wizardHasUnsavedChanges ? UNSAVED_CHANGES_MESSAGE : ''}
+            />
             <button
               ref={menuButtonRef}
               type="button"
@@ -174,7 +174,7 @@ export default function BitacoraLayout() {
         )}
 
         <main id="contenido-principal" className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-8">
-          <Outlet />
+          <Outlet context={{ setWizardHasUnsavedChanges }} />
         </main>
       </div>
       <Footer />

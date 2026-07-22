@@ -1,18 +1,15 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../../contexts/AuthContext';
 import { bitacoraApi } from '../api';
-import { normalizePaginated } from '../model';
+import { activityId, activityTitle, normalizePaginated } from '../model';
 import { useRemote } from '../useRemote';
 import ActivityCard from '../components/ActivityCard';
-import WorkflowActions from '../components/WorkflowActions';
 import Pagination from '../components/Pagination';
 import { EmptyState, ErrorState, LoadingState } from '../components/AsyncState';
 
 const PAGE_LIMIT = 20;
 
 export default function ControlPage() {
-  const { user } = useAuth();
   const [sentPage, setSentPage] = useState(1);
   const [missingPage, setMissingPage] = useState(1);
   const loader = useCallback(
@@ -36,14 +33,6 @@ export default function ControlPage() {
 
   const sentItems = useMemo(() => data?.sent?.items || [], [data]);
   const missingItems = useMemo(() => data?.missing?.items || [], [data]);
-
-  const refreshAfterControl = useCallback(() => {
-    if (sentItems.length === 1 && sentPage > 1) {
-      setSentPage((current) => current - 1);
-      return;
-    }
-    reload();
-  }, [reload, sentItems.length, sentPage]);
 
   if (loading && !data) return <LoadingState label="Cargando control documental…" />;
   if (error && !data) return <ErrorState error={error} onRetry={reload} />;
@@ -74,11 +63,14 @@ export default function ControlPage() {
               <div key={activity.id} className="space-y-2">
                 <ActivityCard activity={activity} />
                 <div className="flex justify-end rounded-xl bg-white px-4 pb-3">
-                  <WorkflowActions
-                    activity={activity}
-                    user={user}
-                    onChanged={refreshAfterControl}
-                  />
+                  <Link
+                    to={`/bitacora/actividades/${activityId(activity)}`}
+                    state={{ wizardStep: 5, fromControl: true }}
+                    className="inline-flex min-h-11 items-center rounded-lg bg-igss-700 px-4 text-sm font-bold text-white hover:bg-igss-800"
+                    aria-label={`Revisar documentación de ${activityTitle(activity)}`}
+                  >
+                    Revisar documentación
+                  </Link>
                 </div>
               </div>
             ))}

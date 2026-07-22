@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Badge from '../../../components/ui/Badge';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
@@ -8,6 +8,7 @@ import { fmtDateTime } from '../../../lib/format';
 import {
   ACCEPTED_EVIDENCE_TYPES,
   ACTIVITY_TYPES,
+  buildRRule,
   DATE_PRECISION_LABELS,
   DOCUMENT_STATUS_META,
   formatBytes,
@@ -163,8 +164,22 @@ function CustomFieldInput({ field, value, disabled, onChange }) {
 }
 
 export function StepNavigation({ current, onSelect, disabled = false }) {
+  const navigationRef = useRef(null);
+
+  useEffect(() => {
+    const navigation = navigationRef.current;
+    const active = navigation?.querySelector('[aria-current="step"]');
+    if (!navigation || !active) return;
+    const centeredLeft = active.offsetLeft + (active.offsetWidth / 2) - (navigation.clientWidth / 2);
+    navigation.scrollTo?.({
+      left: Math.max(0, centeredLeft),
+      behavior: 'auto',
+    });
+  }, [current]);
+
   return (
     <nav
+      ref={navigationRef}
       aria-label="Pasos de la actividad"
       aria-busy={disabled || undefined}
       className="overflow-x-auto pb-1"
@@ -608,6 +623,7 @@ export function AgreementsStep({
   people = [],
   peopleLoading = false,
   onSearchPeople,
+  hasUnsavedChanges = false,
 }) {
   const update = (agreementIndex, field, value) => setDraft((current) => ({
     ...current,
@@ -690,7 +706,7 @@ export function AgreementsStep({
           </div>
           <div className="mt-4 flex justify-end">
             {agreement.id ? (
-              <Button variant="ghost" size="sm" className="min-h-11 text-red-700" onClick={() => onArchive(agreement)} disabled={disabled}>Archivar acuerdo</Button>
+              <Button variant="ghost" size="sm" className="min-h-11 text-red-700" onClick={() => onArchive(agreement)} disabled={disabled || hasUnsavedChanges}>Archivar acuerdo</Button>
             ) : draft.acuerdos.length > 1 ? (
               <Button variant="ghost" size="sm" className="min-h-11 text-red-700" onClick={() => removeAgreement(agreementIndex)} disabled={disabled}>Quitar acuerdo sin guardar</Button>
             ) : null}
@@ -702,11 +718,18 @@ export function AgreementsStep({
   );
 }
 
-function ReplacementForm({ evidence, onReplace, disabled }) {
+function ReplacementForm({ evidence, onReplace, disabled, onDirtyChange }) {
   const [file, setFile] = useState(null);
   const [reason, setReason] = useState('');
   const [working, setWorking] = useState(false);
   const [idempotencyKey, setIdempotencyKey] = useState(() => newIdempotencyKey('sustituir'));
+  const dirty = Boolean(file || reason.trim());
+  useEffect(() => {
+    onDirtyChange?.(evidence.id, dirty);
+  }, [dirty, evidence.id, onDirtyChange]);
+  useEffect(() => () => {
+    onDirtyChange?.(evidence.id, false);
+  }, [evidence.id, onDirtyChange]);
   const submit = async () => {
     setWorking(true);
     try {
@@ -730,7 +753,18 @@ function ReplacementForm({ evidence, onReplace, disabled }) {
   );
 }
 
-export function EvidenceStep({ draft, pendingFiles, onFiles, disabled, onDownload, onReplace }) {
+export function EvidenceStep({
+  draft,
+  pendingFiles,
+  onFiles,
+  disabled,
+  onDownload,
+  onReplace,
+  wizardDraftDirty = false,
+  replacementDirtyIds = new Set(),
+  onReplacementDirty,
+  resetKey = 0,
+}) {
   return (
     <div className="space-y-5">
       <div>
@@ -744,13 +778,17 @@ export function EvidenceStep({ draft, pendingFiles, onFiles, disabled, onDownloa
           label="Agregar archivos"
           accept={ACCEPTED_EVIDENCE_TYPES.join(',')}
           multiple
-          disabled={disabled}
+          disabled={disabled || replacementDirtyIds.size > 0}
           onChange={(event) => onFiles(event.target.files)}
           hint="PDF, DOCX, XLSX, PPTX, PNG o JPEG. Máximo 25 MiB por archivo y 100 MiB por actividad."
         />
         {pendingFiles.length > 0 && (
           <ul className="mt-3 space-y-1 text-sm text-gray-700">
-            {pendingFiles.map((file) => <li key={`${file.name}-${file.lastModified}`}>{file.name} · {formatBytes(file.size)} · pendiente de subir</li>)}
+            {pendingFiles.map((file) => (
+              <li key={`${file.name}-${file.lastModified}`} className="break-all">
+                {file.name} · {formatBytes(file.size)} · pendiente de subir
+              </li>
+            ))}
           </ul>
         )}
       </div>
@@ -763,13 +801,25 @@ export function EvidenceStep({ draft, pendingFiles, onFiles, disabled, onDownloa
             {draft.evidencias.map((evidence) => (
               <article key={evidence.id} className="rounded-xl border border-gray-200 bg-white p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <strong className="block text-sm text-gray-900">{evidence.nombre_original || evidence.nombre}</strong>
+                  <div className="min-w-0 flex-1">
+                    <strong className="block break-all text-sm text-gray-900">{evidence.nombre_original || evidence.nombre}</strong>
                     <span className="text-xs text-gray-500">{formatBytes(evidence.tamano_bytes || evidence.tamano || 0)} · {evidence.estado || 'DISPONIBLE'}</span>
                   </div>
                   <Button variant="secondary" size="sm" className="min-h-11" onClick={() => onDownload(evidence)} disabled={evidence.estado && evidence.estado !== 'DISPONIBLE'}>Descargar</Button>
                 </div>
-                {(!evidence.estado || evidence.estado === 'DISPONIBLE') && <ReplacementForm evidence={evidence} onReplace={onReplace} disabled={disabled} />}
+                {(!evidence.estado || evidence.estado === 'DISPONIBLE') && (
+                  <ReplacementForm
+                    key={`${evidence.id}-${resetKey}`}
+                    evidence={evidence}
+                    onReplace={onReplace}
+                    onDirtyChange={onReplacementDirty}
+                    disabled={
+                      disabled
+                      || wizardDraftDirty
+                      || (replacementDirtyIds.size > 0 && !replacementDirtyIds.has(evidence.id))
+                    }
+                  />
+                )}
               </article>
             ))}
           </div>
@@ -779,8 +829,75 @@ export function EvidenceStep({ draft, pendingFiles, onFiles, disabled, onDownloa
   );
 }
 
-export function ReviewStep({ draft, missing, user, onWorkflow, secretary }) {
+function localDateTimeLabel(value) {
+  if (!value) return '';
+  const normalized = /(?:Z|[+-]\d{2}:\d{2})$/.test(value) ? value : `${value}:00-06:00`;
+  return fmtDateTime(normalized);
+}
+
+function participantName(participant) {
+  return participant.nombre
+    || participant.nombre_externo
+    || participant.usuario_nombre
+    || (participant.usuario_id ? `Cuenta institucional #${participant.usuario_id}` : 'Participante sin nombre');
+}
+
+function attendanceLabel(participant) {
+  if (participant.asistio === true || participant.asistencia === 'ASISTIO') return 'Asistió';
+  if (participant.asistio === false || participant.asistencia === 'NO_ASISTIO') return 'No asistió';
+  return 'Pendiente de confirmar';
+}
+
+function responsibleName(responsible) {
+  return responsible.nombre
+    || responsible.nombre_externo
+    || responsible.usuario_nombre
+    || (responsible.usuario_id ? `Cuenta institucional #${responsible.usuario_id}` : 'Responsable sin nombre');
+}
+
+function returnDetails(value) {
+  if (!value) return null;
+  if (typeof value === 'string') return { message: value, date: '', actor: '' };
+  return {
+    message: value.observaciones || value.motivo || value.comentario || value.detalle || '',
+    date: value.created_at || value.fecha || value.devuelta_at || value.updated_at || '',
+    actor: value.usuario_nombre || value.devuelto_por_nombre || value.actor_nombre || value.devuelto_por || '',
+  };
+}
+
+export function ReviewStep({
+  draft,
+  missing,
+  user,
+  onWorkflow,
+  onArchived,
+  secretary,
+  hasUnsavedChanges = false,
+  references = {},
+}) {
   const source = draft.legacy_source;
+  const latestReturn = returnDetails(draft.ultima_devolucion);
+  const modality = MODALITIES.find((item) => item.value === draft.modalidad)?.label
+    || draft.modalidad
+    || 'Pendiente';
+  const classification = (references.classifications || []).find(
+    (item) => String(item.id) === String(draft.clasificacion_id)
+  );
+  const tagLabels = (draft.etiqueta_detalles || []).map((tag) => tag.nombre).filter(Boolean);
+  if (tagLabels.length === 0) {
+    (draft.etiquetas || []).forEach((tagId) => {
+      const tag = (references.tags || []).find((item) => String(item.id) === String(tagId));
+      if (tag?.nombre) tagLabels.push(tag.nombre);
+    });
+  }
+  const customValues = Object.entries(draft.campos_personalizados || {}).map(([key, value]) => {
+    const definition = (references.customFields || []).find((item) => item.clave === key);
+    const rendered = typeof value === 'boolean' ? (value ? 'Sí' : 'No') : String(value);
+    return [definition?.nombre || key, rendered];
+  });
+  const recurrenceRule = draft.recurrencia?.enabled
+    ? buildRRule(draft.recurrencia) || draft.recurrencia.rrule || 'Configuración pendiente'
+    : 'No recurrente';
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-2">
@@ -788,6 +905,20 @@ export function ReviewStep({ draft, missing, user, onWorkflow, secretary }) {
         <StatusBadge value={draft.estado_documentacion} kind="document" />
         {draft.legacy_import && <Badge tone="outline">Importación histórica</Badge>}
       </div>
+
+      {draft.estado_documentacion === 'REQUIERE_CORRECCION' && latestReturn && (
+        <section className="rounded-xl border-2 border-red-400 bg-red-50 p-4 shadow-sm" aria-labelledby="latest-return-title" role="alert">
+          <h2 id="latest-return-title" className="text-lg font-bold text-red-950">Corrección solicitada por Secretaría</h2>
+          <p className="mt-2 whitespace-pre-wrap break-words text-sm text-red-900">
+            {latestReturn.message || 'Revise la devolución más reciente antes de reenviar la documentación.'}
+          </p>
+          {(latestReturn.actor || latestReturn.date) && (
+            <p className="mt-3 text-xs font-semibold text-red-800">
+              {[latestReturn.actor, latestReturn.date ? fmtDateTime(latestReturn.date) : ''].filter(Boolean).join(' · ')}
+            </p>
+          )}
+        </section>
+      )}
 
       {missing.length > 0 ? (
         <section className="rounded-xl border border-red-200 bg-red-50 p-4" aria-labelledby="missing-title">
@@ -798,23 +929,100 @@ export function ReviewStep({ draft, missing, user, onWorkflow, secretary }) {
         <div className="rounded-xl border border-green-200 bg-green-50 p-4 font-semibold text-green-900">La documentación reúne los requisitos para enviarse.</div>
       )}
 
-      <section className="grid gap-4 md:grid-cols-2" aria-label="Resumen de la actividad">
-        <div className="rounded-xl border border-gray-200 p-4">
-          <h2 className="font-bold text-igss-900">Programación</h2>
-          <dl className="mt-3 space-y-2 text-sm">
-            <div><dt className="font-semibold text-gray-600">Título</dt><dd>{draft.titulo || 'Pendiente'}</dd></div>
-            <div><dt className="font-semibold text-gray-600">Inicio</dt><dd>{draft.inicio_at ? fmtDateTime(`${draft.inicio_at}:00-06:00`) : 'Sin fecha'}</dd></div>
-            <div><dt className="font-semibold text-gray-600">Lugar</dt><dd>{draft.unidad_lugar || 'Pendiente'}</dd></div>
-          </dl>
-        </div>
-        <div className="rounded-xl border border-gray-200 p-4">
-          <h2 className="font-bold text-igss-900">Contenido</h2>
-          <dl className="mt-3 space-y-2 text-sm">
-            <div><dt className="font-semibold text-gray-600">Participantes</dt><dd>{draft.participantes.filter((item) => item.nombre || item.usuario_id).length}</dd></div>
-            <div><dt className="font-semibold text-gray-600">Acuerdos</dt><dd>{draft.acuerdos.filter((item) => item.descripcion).length}</dd></div>
-            <div><dt className="font-semibold text-gray-600">Archivos</dt><dd>{draft.evidencias.length}</dd></div>
-          </dl>
-        </div>
+      <section className="rounded-xl border border-gray-200 p-4" aria-labelledby="review-programming-title">
+        <h2 id="review-programming-title" className="font-bold text-igss-900">Programación</h2>
+        <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+          <div className="sm:col-span-2"><dt className="font-semibold text-gray-600">Título</dt><dd className="break-words">{draft.titulo || 'Pendiente'}</dd></div>
+          <div className="sm:col-span-2"><dt className="font-semibold text-gray-600">Objetivo</dt><dd className="whitespace-pre-wrap break-words">{draft.objetivo || 'Pendiente'}</dd></div>
+          <div><dt className="font-semibold text-gray-600">Tipo</dt><dd>{draft.tipo || 'Pendiente'}</dd></div>
+          <div><dt className="font-semibold text-gray-600">Modalidad</dt><dd>{modality}</dd></div>
+          <div><dt className="font-semibold text-gray-600">Prioridad</dt><dd>{draft.prioridad || 'MEDIA'}</dd></div>
+          <div><dt className="font-semibold text-gray-600">Clasificación</dt><dd>{classification?.nombre || classification?.clave || draft.clasificacion || 'Sin clasificación'}</dd></div>
+          <div><dt className="font-semibold text-gray-600">Inicio</dt><dd>{localDateTimeLabel(draft.inicio_at) || 'Sin fecha'}</dd></div>
+          <div><dt className="font-semibold text-gray-600">Finalización</dt><dd>{localDateTimeLabel(draft.fin_at) || 'Sin fecha'}</dd></div>
+          <div><dt className="font-semibold text-gray-600">Unidad o lugar</dt><dd className="break-words">{draft.unidad_lugar || 'Pendiente'}</dd></div>
+          <div><dt className="font-semibold text-gray-600">Organizador</dt><dd className="break-words">{draft.organizador || 'Pendiente'}</dd></div>
+          <div className="sm:col-span-2"><dt className="font-semibold text-gray-600">Recurrencia</dt><dd className="break-all">{recurrenceRule}{draft.serie_id || draft.series_id ? ` · Serie #${draft.serie_id || draft.series_id}` : ''}</dd></div>
+          <div className="sm:col-span-2"><dt className="font-semibold text-gray-600">Etiquetas</dt><dd className="break-words">{tagLabels.join(', ') || 'Sin etiquetas'}</dd></div>
+          {customValues.map(([label, value]) => (
+            <div key={label} className="sm:col-span-2"><dt className="font-semibold text-gray-600">{label}</dt><dd className="whitespace-pre-wrap break-words">{value}</dd></div>
+          ))}
+        </dl>
+      </section>
+
+      <section className="rounded-xl border border-gray-200 p-4" aria-labelledby="review-participants-title">
+        <h2 id="review-participants-title" className="font-bold text-igss-900">Participantes y asistencia</h2>
+        {draft.participantes.filter((item) => item.nombre || item.nombre_externo || item.usuario_id).length === 0 ? (
+          <p className="mt-3 text-sm text-gray-600">No hay participantes registrados.</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-gray-200">
+            {draft.participantes.filter((item) => item.nombre || item.nombre_externo || item.usuario_id).map((participant, index) => (
+              <li key={participant.id || `${participant.usuario_id || participantName(participant)}-${index}`} className="py-3 first:pt-0 last:pb-0">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <strong className="block break-words text-sm text-gray-900">{participantName(participant)}</strong>
+                    <span className="text-xs text-gray-600">{participant.funcion || participant.organizacion_externa || 'Sin función indicada'}</span>
+                  </div>
+                  <Badge tone={attendanceLabel(participant) === 'Asistió' ? 'green' : attendanceLabel(participant) === 'No asistió' ? 'red' : 'outline'}>
+                    {attendanceLabel(participant)}
+                  </Badge>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="rounded-xl border border-gray-200 p-4" aria-labelledby="review-report-title">
+        <h2 id="review-report-title" className="font-bold text-igss-900">Informe de la actividad</h2>
+        <dl className="mt-3 space-y-4">
+          {REPORT_FIELDS.map(([field, label]) => (
+            <div key={field}>
+              <dt className="text-sm font-semibold text-gray-600">{label}</dt>
+              <dd className="mt-1 whitespace-pre-wrap break-words text-sm text-gray-900">{draft.informe?.[field] || 'Pendiente'}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      <section className="rounded-xl border border-gray-200 p-4" aria-labelledby="review-agreements-title">
+        <h2 id="review-agreements-title" className="font-bold text-igss-900">Acuerdos</h2>
+        {draft.acuerdos.filter((agreement) => agreement.descripcion).length === 0 ? (
+          <p className="mt-3 text-sm text-gray-600">No hay acuerdos completos registrados.</p>
+        ) : (
+          <div className="mt-3 space-y-3">
+            {draft.acuerdos.filter((agreement) => agreement.descripcion).map((agreement, index) => (
+              <article key={agreement.id || `${agreement.descripcion}-${index}`} className="rounded-lg bg-gray-50 p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <h3 className="min-w-0 break-words text-sm font-bold text-gray-900">{agreement.descripcion}</h3>
+                  <Badge tone="outline">{agreement.estado || 'PENDIENTE'}</Badge>
+                </div>
+                <dl className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
+                  <div><dt className="font-semibold text-gray-600">Vencimiento</dt><dd>{localDateTimeLabel(agreement.vencimiento_at) || 'Pendiente'}</dd></div>
+                  <div><dt className="font-semibold text-gray-600">Prioridad</dt><dd>{agreement.prioridad || 'MEDIA'}</dd></div>
+                  <div className="sm:col-span-2"><dt className="font-semibold text-gray-600">Responsables</dt><dd className="break-words">{(agreement.responsables || []).map(responsibleName).join(', ') || 'Pendiente'}</dd></div>
+                  {agreement.evidencia_cumplimiento && <div className="sm:col-span-2"><dt className="font-semibold text-gray-600">Evidencia de cumplimiento</dt><dd className="whitespace-pre-wrap break-words">{agreement.evidencia_cumplimiento}</dd></div>}
+                </dl>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-xl border border-gray-200 p-4" aria-labelledby="review-evidence-title">
+        <h2 id="review-evidence-title" className="font-bold text-igss-900">Evidencias adjuntas</h2>
+        {draft.evidencias.length === 0 ? (
+          <p className="mt-3 text-sm text-gray-600">No se adjuntaron archivos.</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-gray-200">
+            {draft.evidencias.map((evidence, index) => (
+              <li key={evidence.id || `${evidence.nombre_original || evidence.nombre}-${index}`} className="min-w-0 py-3 first:pt-0 last:pb-0">
+                <strong className="block break-all text-sm text-gray-900">{evidence.nombre_original || evidence.nombre || 'Archivo sin nombre'}</strong>
+                <span className="text-xs text-gray-600">{formatBytes(evidence.tamano_bytes || evidence.tamano || 0)} · {evidence.estado || 'DISPONIBLE'}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       {draft.legacy_import && (
@@ -856,7 +1064,13 @@ export function ReviewStep({ draft, missing, user, onWorkflow, secretary }) {
       {draft.id && (
         <section className="rounded-xl border border-gray-200 bg-gray-50 p-4" aria-labelledby="actions-title">
           <h2 id="actions-title" className="mb-3 font-bold text-gray-900">Acciones del flujo</h2>
-          <WorkflowActions activity={draft} user={user} onChanged={onWorkflow} />
+          <WorkflowActions
+            activity={draft}
+            user={user}
+            onChanged={onWorkflow}
+            onArchived={onArchived}
+            hasUnsavedChanges={hasUnsavedChanges}
+          />
         </section>
       )}
 
