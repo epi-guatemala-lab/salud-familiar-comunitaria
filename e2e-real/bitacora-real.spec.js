@@ -189,7 +189,7 @@ test.describe.serial('Bitácora contra FastAPI y SQLite efímeros', () => {
     await logout(page);
 
     await login(page, 'browser.secretary', TEMPORARY_PASSWORD);
-    await page.getByRole('link', { name: 'Control documental' }).click();
+    await page.getByRole('link', { name: 'Control documental', exact: true }).click();
     await expect(page.getByText('Actividad integrada Playwright')).toBeVisible();
     await page.getByRole('link', { name: 'Revisar documentación de Actividad integrada Playwright' }).click();
     await expect(page.getByRole('heading', { name: 'Informe de la actividad' })).toBeVisible();
