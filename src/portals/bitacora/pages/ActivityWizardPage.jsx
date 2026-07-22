@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import {
+  Link,
+  useBlocker,
+  useLocation,
+  useNavigate,
+  useOutletContext,
+  useParams,
+} from 'react-router-dom';
 import Button from '../../../components/ui/Button';
 import Modal from '../../../components/ui/Modal';
 import Textarea from '../../../components/ui/Textarea';
@@ -19,6 +26,7 @@ import {
   serializeAgreement,
   serializeParticipants,
   serializeReport,
+  UNSAVED_CHANGES_MESSAGE,
   validateEvidenceFiles,
 } from '../model';
 import { ErrorState, LoadingState } from '../components/AsyncState';
@@ -71,6 +79,8 @@ export default function ActivityWizardPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const outletContext = useOutletContext();
+  const setWizardHasUnsavedChanges = outletContext?.setWizardHasUnsavedChanges;
   const { user } = useAuth();
   const toast = useToast();
   const [draft, setDraft] = useState(() => initialDraft());
@@ -79,6 +89,9 @@ export default function ActivityWizardPage() {
   const [loading, setLoading] = useState(Boolean(id));
   const [loadError, setLoadError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [dirtySteps, setDirtySteps] = useState(() => new Set());
+  const [replacementDirtyIds, setReplacementDirtyIds] = useState(() => new Set());
+  const [evidenceResetKey, setEvidenceResetKey] = useState(0);
   const [lastSaved, setLastSaved] = useState(null);
   const [pendingFiles, setPendingFiles] = useState([]);
   const [conflict, setConflict] = useState(false);
@@ -101,6 +114,9 @@ export default function ActivityWizardPage() {
   const evidenceKeysRef = useRef(new Map());
   const archiveKeyRef = useRef(null);
   const peopleRequestRef = useRef(0);
+  const allowedNavigationPathRef = useRef(null);
+  const fromControl = Boolean(location.state?.fromControl);
+  const returnPath = fromControl ? '/bitacora/control' : '/bitacora/actividades';
 
   useEffect(() => {
     const requestedStep = Number(location.state?.wizardStep);
@@ -108,6 +124,16 @@ export default function ActivityWizardPage() {
       setStep(requestedStep);
     }
   }, [location.key, location.state]);
+
+  useEffect(() => {
+    if (dirtySteps.size === 0) return undefined;
+    const warnBeforeUnload = (event) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warnBeforeUnload);
+    return () => window.removeEventListener('beforeunload', warnBeforeUnload);
+  }, [dirtySteps]);
 
   useEffect(() => {
     let active = true;
@@ -192,6 +218,10 @@ export default function ActivityWizardPage() {
         evidencias,
       });
       setDraft(normalized);
+      setDirtySteps(new Set());
+      setReplacementDirtyIds(new Set());
+      setPendingFiles([]);
+      setEvidenceResetKey((current) => current + 1);
       setOriginalSchedule({ inicio_at: normalized.inicio_at, fin_at: normalized.fin_at });
       setOriginalRecurrence({
         enabled: Boolean(normalized.recurrencia?.enabled),
@@ -253,6 +283,77 @@ export default function ActivityWizardPage() {
     !canEvidence || narrativeLocked,
     true,
   ][step];
+  const hasUnsavedChanges = dirtySteps.size > 0 || replacementDirtyIds.size > 0;
+  const currentStepDirty = dirtySteps.has(step);
+
+  useEffect(() => {
+    setWizardHasUnsavedChanges?.(hasUnsavedChanges);
+  }, [hasUnsavedChanges, setWizardHasUnsavedChanges]);
+
+  useEffect(() => () => {
+    setWizardHasUnsavedChanges?.(false);
+  }, [setWizardHasUnsavedChanges]);
+  const navigationBlocker = useBlocker(({ currentLocation, nextLocation }) => {
+    if (
+      allowedNavigationPathRef.current
+      && nextLocation.pathname.endsWith(allowedNavigationPathRef.current)
+    ) {
+      allowedNavigationPathRef.current = null;
+      return false;
+    }
+    return hasUnsavedChanges && currentLocation.pathname !== nextLocation.pathname;
+  });
+
+  useEffect(() => {
+    if (navigationBlocker.state !== 'blocked') return;
+    if (window.confirm(UNSAVED_CHANGES_MESSAGE)) {
+      navigationBlocker.proceed();
+    } else {
+      navigationBlocker.reset();
+    }
+  }, [navigationBlocker]);
+
+  const navigateWithoutGuard = (destination, options) => {
+    allowedNavigationPathRef.current = destination;
+    navigate(destination, options);
+  };
+
+  const editCurrentStep = (updater) => {
+    setDirtySteps((current) => {
+      if (current.has(step)) return current;
+      const next = new Set(current);
+      next.add(step);
+      return next;
+    });
+    setDraft(updater);
+  };
+
+  const markStepSaved = (savedStep) => {
+    setDirtySteps((current) => {
+      if (!current.has(savedStep)) return current;
+      const next = new Set(current);
+      next.delete(savedStep);
+      return next;
+    });
+  };
+
+  const setReplacementDirty = useCallback((evidenceId, isDirty) => {
+    setReplacementDirtyIds((current) => {
+      const next = new Set(current);
+      if (isDirty) next.add(evidenceId);
+      else next.delete(evidenceId);
+      if (next.size === current.size && [...next].every((item) => current.has(item))) {
+        return current;
+      }
+      return next;
+    });
+  }, []);
+
+  const requestStep = (nextStep) => {
+    if (nextStep === step) return;
+    if (currentStepDirty && !window.confirm(UNSAVED_CHANGES_MESSAGE)) return;
+    setStep(nextStep);
+  };
 
   const mergeResponse = (response) => {
     const activity = unwrap(response);
@@ -368,7 +469,7 @@ export default function ActivityWizardPage() {
         const createdActivity = unwrap(created);
         activityIdentifier = activityId(createdActivity);
         mergeResponse(created);
-        navigate(`/bitacora/actividades/${activityIdentifier}`, {
+        navigateWithoutGuard(`/bitacora/actividades/${activityIdentifier}`, {
           replace: true,
           state: Number.isInteger(afterCreateStep) ? { wizardStep: afterCreateStep } : null,
         });
@@ -383,7 +484,7 @@ export default function ActivityWizardPage() {
           returnedIdentifier
           && String(returnedIdentifier) !== String(activityIdentifier)
         ) {
-          navigate(`/bitacora/actividades/${returnedIdentifier}`, {
+          navigateWithoutGuard(`/bitacora/actividades/${returnedIdentifier}`, {
             replace: true,
             state: {
               wizardStep: Number.isInteger(afterCreateStep) ? afterCreateStep : step,
@@ -416,6 +517,7 @@ export default function ActivityWizardPage() {
         await uploadPending(activityIdentifier);
       }
       setLastSaved(new Date());
+      markStepSaved(step);
       toast.success('Borrador guardado en el servidor.');
       return true;
     } catch (error) {
@@ -437,16 +539,19 @@ export default function ActivityWizardPage() {
   };
 
   const chooseFiles = (fileList) => {
+    const selectedFiles = Array.from(fileList || []);
+    if (selectedFiles.length === 0) return;
     const existingBytes = draft.evidencias.reduce(
       (sum, evidence) => sum + Number(evidence.tamano_bytes || evidence.tamano || 0),
       pendingFiles.reduce((sum, file) => sum + file.size, 0)
     );
-    const errors = validateEvidenceFiles(fileList, existingBytes);
+    const errors = validateEvidenceFiles(selectedFiles, existingBytes);
     if (errors.length > 0) {
       errors.forEach((message) => toast.error(message));
       return;
     }
-    setPendingFiles((current) => [...current, ...Array.from(fileList || [])]);
+    setDirtySteps((current) => new Set(current).add(4));
+    setPendingFiles((current) => [...current, ...selectedFiles]);
   };
 
   const downloadEvidence = async (evidence) => {
@@ -464,6 +569,11 @@ export default function ActivityWizardPage() {
   };
 
   const replaceEvidence = async (evidence, file, reason, idempotencyKey) => {
+    if (dirtySteps.size > 0) {
+      const message = 'Guarde los otros cambios del borrador antes de sustituir una evidencia.';
+      toast.warning(message);
+      throw new Error(message);
+    }
     const errors = validateEvidenceFiles([file]);
     if (errors.length > 0) {
       errors.forEach((message) => toast.error(message));
@@ -480,6 +590,10 @@ export default function ActivityWizardPage() {
   };
 
   const archiveAgreement = async () => {
+    if (hasUnsavedChanges) {
+      toast.warning('Guarde los cambios del borrador antes de archivar un acuerdo.');
+      return;
+    }
     setArchiving(true);
     try {
       await bitacoraApi.archiveAgreement(
@@ -513,7 +627,7 @@ export default function ActivityWizardPage() {
       returnedIdentifier
       && String(returnedIdentifier) !== String(currentIdentifier)
     ) {
-      navigate(`/bitacora/actividades/${returnedIdentifier}`, {
+      navigateWithoutGuard(`/bitacora/actividades/${returnedIdentifier}`, {
         replace: true,
         state: { wizardStep: 5 },
       });
@@ -522,31 +636,40 @@ export default function ActivityWizardPage() {
     load();
   };
 
+  const activityArchived = () => {
+    setDirtySteps(new Set());
+    navigateWithoutGuard(returnPath, { replace: true });
+  };
+
+  const finish = () => {
+    navigate(returnPath);
+  };
+
   const renderStep = () => {
-    if (step === 0) return <ProgrammingStep draft={draft} setDraft={setDraft} disabled={stepDisabled} scope={scope} onScope={setScope} hasSeries={hasSeries} requiresReason={changeRequiresReason} typeOptions={references.types} classificationOptions={references.classifications} tagOptions={references.tags} customFields={references.customFields} referencesLoading={references.catalogsLoading} />;
-    if (step === 1) return <ParticipantsStep draft={draft} setDraft={setDraft} disabled={stepDisabled} people={references.people} peopleLoading={references.peopleLoading} onSearchPeople={searchPeople} />;
-    if (step === 2) return <ReportStep draft={draft} setDraft={setDraft} disabled={stepDisabled} />;
-    if (step === 3) return <AgreementsStep draft={draft} setDraft={setDraft} disabled={stepDisabled} onArchive={(agreement) => { archiveKeyRef.current = newIdempotencyKey('archivar'); setArchiveTarget(agreement); }} people={references.people} peopleLoading={references.peopleLoading} onSearchPeople={searchPeople} />;
-    if (step === 4) return <EvidenceStep draft={draft} pendingFiles={pendingFiles} onFiles={chooseFiles} disabled={stepDisabled} onDownload={downloadEvidence} onReplace={replaceEvidence} />;
-    return <ReviewStep draft={draft} missing={missing} user={user} secretary={secretary} onWorkflow={workflowChanged} />;
+    if (step === 0) return <ProgrammingStep draft={draft} setDraft={editCurrentStep} disabled={stepDisabled} scope={scope} onScope={setScope} hasSeries={hasSeries} requiresReason={changeRequiresReason} typeOptions={references.types} classificationOptions={references.classifications} tagOptions={references.tags} customFields={references.customFields} referencesLoading={references.catalogsLoading} />;
+    if (step === 1) return <ParticipantsStep draft={draft} setDraft={editCurrentStep} disabled={stepDisabled} people={references.people} peopleLoading={references.peopleLoading} onSearchPeople={searchPeople} />;
+    if (step === 2) return <ReportStep draft={draft} setDraft={editCurrentStep} disabled={stepDisabled} />;
+    if (step === 3) return <AgreementsStep draft={draft} setDraft={editCurrentStep} disabled={stepDisabled} hasUnsavedChanges={hasUnsavedChanges} onArchive={(agreement) => { archiveKeyRef.current = newIdempotencyKey('archivar'); setArchiveTarget(agreement); }} people={references.people} peopleLoading={references.peopleLoading} onSearchPeople={searchPeople} />;
+    if (step === 4) return <EvidenceStep draft={draft} pendingFiles={pendingFiles} onFiles={chooseFiles} disabled={stepDisabled} onDownload={downloadEvidence} onReplace={replaceEvidence} wizardDraftDirty={dirtySteps.size > 0} replacementDirtyIds={replacementDirtyIds} onReplacementDirty={setReplacementDirty} resetKey={evidenceResetKey} />;
+    return <ReviewStep draft={draft} missing={missing} user={user} secretary={secretary} onWorkflow={workflowChanged} onArchived={activityArchived} hasUnsavedChanges={hasUnsavedChanges} references={references} />;
   };
 
   return (
     <div className="space-y-5 pb-40 sm:pb-28">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Link to="/bitacora/actividades" className="inline-flex min-h-11 items-center text-sm font-semibold text-igss-700 hover:underline">← Volver a actividades</Link>
+          <Link to={returnPath} className="inline-flex min-h-11 items-center text-sm font-semibold text-igss-700 hover:underline">← Volver a {fromControl ? 'control documental' : 'actividades'}</Link>
           <h1 className="text-2xl font-bold text-igss-900">{draft.id ? draft.titulo || 'Actividad' : 'Nueva actividad'}</h1>
           {draft.id && <div className="mt-2 flex flex-wrap gap-2"><StatusBadge value={draft.estado_programacion} /><StatusBadge value={draft.estado_documentacion} kind="document" /></div>}
         </div>
         <div className="text-right text-xs text-gray-500" aria-live="polite">
-          {lastSaved ? `Último guardado: ${lastSaved.toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' })}` : 'Los borradores se guardan en el servidor'}
+          {hasUnsavedChanges
+            ? <span className="font-semibold text-amber-700">Cambios sin guardar</span>
+            : lastSaved
+              ? `Último guardado: ${lastSaved.toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' })}`
+              : 'Los borradores se guardan en el servidor'}
         </div>
       </div>
-
-      <aside className="rounded-xl border-l-4 border-yellow-500 bg-yellow-50 p-4 text-sm text-yellow-950" role="note">
-        <strong>No ingrese nombres, números de afiliación, DPI ni otros identificadores de pacientes.</strong> Esta Bitácora no es un expediente clínico.
-      </aside>
 
       {conflict && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-300 bg-red-50 p-4" role="alert">
@@ -561,7 +684,7 @@ export default function ActivityWizardPage() {
         </div>
       )}
 
-      <StepNavigation current={step} onSelect={setStep} disabled={saving} />
+      <StepNavigation current={step} onSelect={requestStep} disabled={saving} />
 
       <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6" aria-labelledby="current-step-title">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 pb-4">
@@ -580,10 +703,10 @@ export default function ActivityWizardPage() {
 
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-gray-200 bg-white/95 p-3 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] backdrop-blur md:left-60">
         <div className="mx-auto flex max-w-5xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          {step > 0 && <Button variant="secondary" className="min-h-11 self-start" disabled={saving} onClick={() => setStep((current) => current - 1)}>Anterior</Button>}
+          {step > 0 && <Button variant="secondary" className="min-h-11 self-start" disabled={saving} onClick={() => requestStep(step - 1)}>Anterior</Button>}
           <div className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto sm:flex-wrap">
             {step < 5 && !stepDisabled && <Button variant="secondary" className="min-h-11" loading={saving} onClick={saveCurrent}>Guardar borrador</Button>}
-            {step < 5 ? <Button className={`min-h-11 ${stepDisabled ? 'col-span-2' : ''}`} loading={saving} onClick={next}>{stepDisabled ? 'Continuar' : 'Guardar y continuar'}</Button> : <Button className="col-span-2 min-h-11" onClick={() => navigate('/bitacora/actividades')}>Finalizar</Button>}
+            {step < 5 ? <Button className={`min-h-11 ${stepDisabled ? 'col-span-2' : ''}`} loading={saving} onClick={next}>{stepDisabled ? 'Continuar' : 'Guardar y continuar'}</Button> : <Button className="col-span-2 min-h-11" onClick={finish}>Finalizar</Button>}
           </div>
         </div>
       </div>

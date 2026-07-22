@@ -19,27 +19,20 @@ export default function BitacoraLogin() {
 
   useEffect(() => {
     if (!allowed) return;
-    navigate(user?.password_reset_required ? '/bitacora/cambiar-contrasena' : target, {
-      replace: true,
-    });
-  }, [allowed, navigate, target, user?.password_reset_required]);
+    navigate(target, { replace: true });
+  }, [allowed, navigate, target]);
 
   if (allowed) {
     return (
       <Navigate
-        to={user?.password_reset_required ? '/bitacora/cambiar-contrasena' : target}
+        to={target}
         replace
       />
     );
   }
 
-  const onSuccess = (response) => {
-    navigate(
-      response.password_reset_required || response.user?.password_reset_required
-        ? '/bitacora/cambiar-contrasena'
-        : target,
-      { replace: true }
-    );
+  const onSuccess = () => {
+    navigate(target, { replace: true });
   };
 
   return (

@@ -1,4 +1,5 @@
 export const GT_TIME_ZONE = 'America/Guatemala';
+export const UNSAVED_CHANGES_MESSAGE = 'Tiene cambios sin guardar. ¿Desea continuar sin guardarlos?';
 
 export const PROGRAM_STATUS = {
   BORRADOR: 'BORRADOR',
@@ -130,6 +131,7 @@ export function initialDraft() {
     version: null,
     estado_programacion: PROGRAM_STATUS.BORRADOR,
     estado_documentacion: DOCUMENT_STATUS.NO_INICIADA,
+    ultima_devolucion: null,
     legacy_import: false,
   };
 }
@@ -275,6 +277,7 @@ export function activityToDraft(activity = {}) {
     unidad_lugar: activity.unidad_lugar || activity.lugar || activity.unidad_nombre || '',
     modalidad: activity.modalidad || '',
     organizador: activity.organizador || activity.organizador_externo || '',
+    ultima_devolucion: activity.ultima_devolucion ?? null,
     clasificacion_id: activity.clasificacion_id || activity.clasificacion_valor_id || '',
     etiquetas: tagDetails.map((tag) => (
       typeof tag === 'object' && tag !== null ? tag.id || tag.nombre : tag

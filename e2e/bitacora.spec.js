@@ -220,7 +220,6 @@ test('asistente crea un borrador persistente y la vista móvil conserva el RBAC'
 
   await page.getByRole('link', { name: /Nueva actividad/ }).first().click();
   await expect(page.getByRole('heading', { name: 'Nueva actividad' })).toBeVisible();
-  await expect(page.getByText(/No ingrese nombres, números de afiliación/)).toBeVisible();
   await page.getByLabel('Título').fill('Validación E2E de Bitácora');
   await page.getByLabel('Objetivo').fill('Confirmar el flujo de navegador automatizado.');
   await page.getByLabel('Tipo de actividad').selectOption({ label: 'Taller' });
@@ -292,27 +291,18 @@ test('rechaza una cuenta sin rol de Bitácora y elimina su sesión local', async
   expect(issues).toEqual([]);
 });
 
-test('fuerza el cambio de contraseña temporal antes de permitir el portal', async ({ page }) => {
+test('permite conservar la contraseña inicial sin bloquear el portal', async ({ page }) => {
   const state = await installScenarioApi(page, {
     user: userFor('assistant', { password_reset_required: true }),
   });
   const issues = unexpectedFailures(page);
   await login(page);
-  await expect(page.getByRole('heading', { name: 'Cambie su contraseña temporal' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Bitácora de actividades' })).toBeVisible();
 
   await page.goto('bitacora');
-  await expect(page.getByRole('heading', { name: 'Cambie su contraseña temporal' })).toBeVisible();
-  await page.getByLabel('Contraseña temporal').fill('temporary-only-for-e2e');
-  await page.locator('input[name="new-password"]').fill('debil');
-  await page.locator('input[name="confirm-password"]').fill('debil');
-  await page.getByRole('button', { name: 'Guardar y continuar' }).click();
-  await expect(page.getByRole('alert')).toContainText('al menos 8 caracteres');
-
-  await page.locator('input[name="new-password"]').fill('NuevaAislada2026');
-  await page.locator('input[name="confirm-password"]').fill('NuevaAislada2026');
-  await page.getByRole('button', { name: 'Guardar y continuar' }).click();
   await expect(page.getByRole('heading', { name: 'Bitácora de actividades' })).toBeVisible();
-  expect(state.requests.some((request) => request.path === '/api/auth/change-password')).toBe(true);
+  await expect(page.getByRole('heading', { name: 'Cambie su contraseña temporal' })).toHaveCount(0);
+  expect(state.requests.some((request) => request.path === '/api/auth/change-password')).toBe(false);
   expect(issues).toEqual([]);
 });
 
@@ -357,18 +347,28 @@ test('Secretaría devuelve y completa expedientes, refrescando ambas bandejas y 
   await login(page, 'browser.secretary');
   await page.goto('bitacora/control');
   await expect(page.getByRole('heading', { name: 'Pendientes de control (2)' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Solicitar corrección' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Marcar completa' })).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'Solicitar corrección' }).first().click();
+  await page.getByRole('link', { name: 'Revisar documentación de Expediente para devolver' }).click();
+  await expect(page.getByRole('heading', { name: '6. Revisión' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Informe de la actividad' })).toBeVisible();
+  await page.getByRole('button', { name: 'Solicitar corrección' }).click();
   const returnDialog = page.getByRole('dialog');
   await returnDialog.getByLabel('Observaciones para corregir').fill('x');
   await expect(returnDialog.getByRole('button', { name: 'Confirmar' })).toBeDisabled();
   await returnDialog.getByLabel('Observaciones para corregir').fill('Corregir el aprendizaje documentado.');
   await returnDialog.getByRole('button', { name: 'Confirmar' }).click();
+  await expect(page.getByRole('heading', { name: 'Corrección solicitada por Secretaría' })).toBeVisible();
+  await expect(page.getByText('Corregir el aprendizaje documentado.')).toBeVisible();
+  await page.getByRole('link', { name: 'Control documental', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Pendientes de control (1)' })).toBeVisible();
   await expect(page.getByText('Expediente para devolver')).toBeVisible();
 
+  await page.getByRole('link', { name: 'Revisar documentación de Expediente para completar' }).click();
   await page.getByRole('button', { name: 'Marcar completa' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Confirmar' }).click();
+  await page.getByRole('link', { name: 'Control documental', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Pendientes de control (0)' })).toBeVisible();
   await expect(page.getByText('No hay documentación esperando revisión')).toBeVisible();
   expect(state.activities.find((item) => item.id === 201).estado_documentacion).toBe('REQUIERE_CORRECCION');
@@ -410,6 +410,119 @@ test('Secretaría pagina ambas colas sin ocultar actividades después de veinte'
   await expect(missingQueue.getByText('Faltante documental 21', { exact: true })).toBeVisible();
   await expect(missingQueue.getByText(/Página 2 de 2/)).toBeVisible();
   expect(issues).toEqual([]);
+});
+
+test('wizard y revisión completa funcionan a 390 px sin ocultar el paso ni desbordar evidencias', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const longEvidenceName = `evidencia_${'x'.repeat(180)}.pdf`;
+  await installScenarioApi(page, {
+    activities: [completeActivity({
+      evidencias: [{
+        id: 701,
+        nombre_original: longEvidenceName,
+        tamano_bytes: 2048,
+        estado: 'DISPONIBLE',
+      }],
+    })],
+  });
+  const issues = unexpectedFailures(page);
+  await login(page);
+  await page.goto('bitacora/actividades/101');
+
+  await page.getByRole('button', { name: 'Guardar y continuar' }).click();
+  await expect(page.getByRole('heading', { name: '2. Participantes' })).toBeVisible();
+  await page.getByRole('button', { name: 'Guardar y continuar' }).click();
+  await expect(page.getByRole('heading', { name: '3. Informe' })).toBeVisible();
+
+  const activeStepIsVisible = await page.getByRole('navigation', { name: 'Pasos de la actividad' }).evaluate((navigation) => {
+    const active = navigation.querySelector('[aria-current="step"]');
+    const navigationRect = navigation.getBoundingClientRect();
+    const activeRect = active.getBoundingClientRect();
+    return activeRect.left >= navigationRect.left && activeRect.right <= navigationRect.right;
+  });
+  expect(activeStepIsVisible).toBe(true);
+
+  await page.getByLabel('Aprendizaje obtenido').fill('Cambio móvil todavía no guardado.');
+  page.once('dialog', async (dialog) => {
+    expect(dialog.message()).toContain('cambios sin guardar');
+    await dialog.dismiss();
+  });
+  await page.getByRole('button', { name: /Revisión/ }).click();
+  await expect(page.getByRole('heading', { name: '3. Informe' })).toBeVisible();
+
+  page.once('dialog', async (dialog) => {
+    expect(dialog.message()).toContain('cambios sin guardar');
+    await dialog.dismiss();
+  });
+  await page.getByRole('link', { name: /Volver a actividades/ }).click();
+  await expect(page.getByRole('heading', { name: '3. Informe' })).toBeVisible();
+
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: /Revisión/ }).click();
+  await expect(page.getByRole('heading', { name: '6. Revisión' })).toBeVisible();
+  await expect(page.getByText('Cambio móvil todavía no guardado.')).toBeVisible();
+  await expect(page.getByText(/Guarde los cambios mostrados en la revisión/)).toBeVisible();
+  for (const heading of [
+    'Programación',
+    'Participantes y asistencia',
+    'Informe de la actividad',
+    'Acuerdos',
+    'Evidencias adjuntas',
+  ]) {
+    await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
+  }
+  await expect(page.getByText(longEvidenceName)).toBeVisible();
+  expect(await page.evaluate(
+    () => document.documentElement.scrollWidth === document.documentElement.clientWidth
+  )).toBe(true);
+  expect(issues).toEqual([]);
+});
+
+test('solo Secretaría con permiso explícito archiva con motivo y vuelve a actividades', async ({ page }) => {
+  const activity = completeActivity({
+    estado_programacion: 'REALIZADA',
+    estado_documentacion: 'COMPLETA',
+    permissions: ['bitacora.archivar'],
+  });
+  const state = await installScenarioApi(page, {
+    user: userFor('secretary'),
+    activities: [activity],
+  });
+  const issues = unexpectedFailures(page);
+  await login(page, 'browser.secretary');
+  await page.goto('bitacora/actividades/101');
+  await page.getByRole('button', { name: /Revisión/ }).click();
+  await page.getByRole('button', { name: 'Archivar actividad' }).click();
+
+  const dialog = page.getByRole('dialog', { name: 'Archivar actividad' });
+  await dialog.getByLabel('Motivo').fill('x');
+  await expect(dialog.getByRole('button', { name: 'Confirmar' })).toBeDisabled();
+  await dialog.getByLabel('Motivo').fill('Cierre administrativo verificado.');
+  await dialog.getByRole('button', { name: 'Confirmar' }).click();
+
+  await expect(page).toHaveURL(/\/bitacora\/actividades$/);
+  await expect(page.getByText('Archivar actividad: cambio registrado.')).toBeVisible();
+  const request = state.requests.find((item) => item.path === '/api/bitacora/actividades/101/archivar');
+  expect(request.body).toMatchObject({ motivo: 'Cierre administrativo verificado.' });
+  expect(request.headers['if-match']).toBe('1');
+  expect(request.headers['idempotency-key']).toMatch(/^archivar-/);
+  expect(state.activities[0].archivada).toBe(true);
+  expect(issues).toEqual([]);
+});
+
+test('un asistente no ve Archivar actividad aunque la actividad anuncie el permiso', async ({ page }) => {
+  await installScenarioApi(page, {
+    user: userFor('assistant'),
+    activities: [completeActivity({
+      estado_programacion: 'REALIZADA',
+      estado_documentacion: 'COMPLETA',
+      permissions: ['bitacora.archivar'],
+    })],
+  });
+  await login(page);
+  await page.goto('bitacora/actividades/101');
+  await page.getByRole('button', { name: /Revisión/ }).click();
+  await expect(page.getByRole('button', { name: 'Archivar actividad' })).toHaveCount(0);
 });
 
 test('un 409 de workflow nunca aparenta éxito y ofrece recargar la versión reciente', async ({ page }) => {

@@ -35,6 +35,12 @@ const META = {
     title: 'Reabrir documentación',
     reason: true,
   },
+  archivar: {
+    label: 'Archivar actividad',
+    tone: 'danger',
+    title: 'Archivar actividad',
+    reason: true,
+  },
 };
 
 const SCOPED_ACTIONS = new Set([
@@ -66,7 +72,13 @@ function allowed(activity, action, fallback) {
   return explicit === null ? fallback : explicit;
 }
 
-export default function WorkflowActions({ activity, user, onChanged }) {
+export default function WorkflowActions({
+  activity,
+  user,
+  onChanged,
+  onArchived,
+  hasUnsavedChanges = false,
+}) {
   const toast = useToast();
   const [selected, setSelected] = useState(null);
   const [reason, setReason] = useState('');
@@ -113,12 +125,19 @@ export default function WorkflowActions({ activity, user, onChanged }) {
     if (activity.estado_documentacion === DOCUMENT_STATUS.COMPLETA && secretary) {
       if (allowed(activity, 'reabrir', hasBitacoraCapability(user, 'reopen'))) result.push('reabrir');
     }
+    if (secretary && explicitPermission(activity, 'archivar') === true) {
+      result.push('archivar');
+    }
     return result;
   }, [activity, collaborator, secretary, user]);
 
   const run = async () => {
+    if (hasUnsavedChanges) {
+      toast.warning('Guarde los cambios del borrador antes de aplicar una acción del flujo.');
+      return;
+    }
     const meta = META[selected];
-    if (meta.reason && !reason.trim()) return;
+    if (meta.reason && reason.trim().length < 3) return;
     setSubmitting(true);
     try {
       const payload = meta.reason
@@ -131,8 +150,13 @@ export default function WorkflowActions({ activity, user, onChanged }) {
       });
       toast.success(`${meta.label}: cambio registrado.`);
       setConflict(false);
+      const completedAction = selected;
       close();
-      onChanged?.(updated);
+      if (completedAction === 'archivar') {
+        onArchived?.(updated);
+      } else {
+        onChanged?.(updated);
+      }
     } catch (error) {
       if (error?.status === 409 || error?.code === 'VERSION_CONFLICT') {
         setConflict(true);
@@ -171,12 +195,18 @@ export default function WorkflowActions({ activity, user, onChanged }) {
         </div>
       )}
       <div className="flex flex-wrap gap-2" aria-label="Acciones del flujo documental">
+        {hasUnsavedChanges && (
+          <p className="w-full rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900" role="alert">
+            Guarde los cambios mostrados en la revisión antes de enviar, cerrar o archivar.
+          </p>
+        )}
         {actions.map((action) => (
           <Button
             key={action}
             variant={META[action].tone}
             size="sm"
             className="min-h-11"
+            disabled={hasUnsavedChanges}
             onClick={() => {
               setConflict(false);
               setScope('single');
@@ -202,7 +232,7 @@ export default function WorkflowActions({ activity, user, onChanged }) {
               variant={selected ? META[selected].tone : 'primary'}
               className="min-h-11"
               loading={submitting}
-              disabled={selected && META[selected].reason && reason.trim().length < 3}
+              disabled={hasUnsavedChanges || (selected && META[selected].reason && reason.trim().length < 3)}
               onClick={run}
             >
               Confirmar

@@ -172,6 +172,19 @@ describe('modelo de Bitácora', () => {
     });
   });
 
+  it('conserva la última devolución para que el colaborador vea qué corregir', () => {
+    const ultimaDevolucion = {
+      observaciones: 'Ampliar el aprendizaje documentado.',
+      created_at: '2026-07-22T14:30:00Z',
+      usuario_nombre: 'Teresa',
+    };
+    expect(activityToDraft({
+      id: 42,
+      estado_documentacion: 'REQUIERE_CORRECCION',
+      ultima_devolucion: ultimaDevolucion,
+    }).ultima_devolucion).toEqual(ultimaDevolucion);
+  });
+
   it('convierte UNTIL UTC a la fecha de Guatemala y conserva componentes avanzados', () => {
     expect(parseRRule(
       'RRULE:FREQ=MONTHLY;INTERVAL=1;BYDAY=MO,TU;BYSETPOS=-1;UNTIL=20260806T055900Z'

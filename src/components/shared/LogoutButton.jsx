@@ -1,12 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
-export default function LogoutButton({ className = '' }) {
+export default function LogoutButton({ className = '', confirmMessage = '' }) {
   const { logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   if (!isAuthenticated) return null;
 
   const handle = async () => {
+    if (confirmMessage && !window.confirm(confirmMessage)) return;
     await logout();
     navigate('/');
   };

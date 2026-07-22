@@ -57,33 +57,38 @@ async function logout(page) {
 }
 
 test.describe.serial('Bitácora contra FastAPI y SQLite efímeros', () => {
-  test('cada rol inicia sesión y cambia obligatoriamente su contraseña temporal', async ({ page }) => {
+  test('roles Bitácora conservan su clave inicial y el admin legado mantiene su política', async ({ page }) => {
     test.setTimeout(90_000);
     const issues = watchBrowser(page);
-    const roles = [
+    const operationalRoles = [
       ['browser.assistant', 'Asistente'],
       ['browser.director', 'Director'],
       ['browser.secretary', 'Secretaría de control documental'],
-      ['browser.admin', 'Administrador SFyC'],
     ];
-    for (const [username, label] of roles) {
+    for (const [username, label] of operationalRoles) {
       await login(page, username, TEMPORARY_PASSWORD);
-      await expect(page.getByRole('heading', { name: 'Cambie su contraseña temporal' })).toBeVisible();
-      await page.getByLabel('Contraseña temporal').fill(TEMPORARY_PASSWORD);
-      await page.locator('input[name="new-password"]').fill(NEW_PASSWORDS[username]);
-      await page.locator('input[name="confirm-password"]').fill(NEW_PASSWORDS[username]);
-      await page.getByRole('button', { name: 'Guardar y continuar' }).click();
       await expect(page.getByRole('heading', { name: 'Bitácora de actividades' })).toBeVisible();
       await expect(page.getByText(label, { exact: true })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Cambie su contraseña temporal' })).toHaveCount(0);
       await logout(page);
     }
+
+    await login(page, 'browser.admin', TEMPORARY_PASSWORD);
+    await expect(page.getByRole('heading', { name: 'Cambie su contraseña temporal' })).toBeVisible();
+    await page.getByLabel('Contraseña temporal').fill(TEMPORARY_PASSWORD);
+    await page.locator('input[name="new-password"]').fill(NEW_PASSWORDS['browser.admin']);
+    await page.locator('input[name="confirm-password"]').fill(NEW_PASSWORDS['browser.admin']);
+    await page.getByRole('button', { name: 'Guardar y continuar' }).click();
+    await expect(page.getByRole('heading', { name: 'Bitácora de actividades' })).toBeVisible();
+    await expect(page.getByText('Administrador SFyC', { exact: true })).toBeVisible();
+    await logout(page);
     expect(issues).toEqual([]);
   });
 
   test('crea, relee y edita una RRULE anual entregada por FastAPI', async ({ page }) => {
     test.setTimeout(120_000);
     const issues = watchBrowser(page);
-    await login(page, 'browser.assistant', NEW_PASSWORDS['browser.assistant']);
+    await login(page, 'browser.assistant', TEMPORARY_PASSWORD);
     await expect(page.getByRole('heading', { name: 'Bitácora de actividades' })).toBeVisible();
     await page.getByRole('link', { name: /Nueva actividad/ }).first().click();
 
@@ -128,10 +133,10 @@ test.describe.serial('Bitácora contra FastAPI y SQLite efímeros', () => {
     expect(issues).toEqual([]);
   });
 
-  test('ciclo real enviado, devuelto, corregido, completado, reabierto y completado', async ({ page }) => {
+  test('ciclo real enviado, devuelto, corregido, completado, reabierto y archivado', async ({ page }) => {
     test.setTimeout(240_000);
     const issues = watchBrowser(page);
-    await login(page, 'browser.assistant', NEW_PASSWORDS['browser.assistant']);
+    await login(page, 'browser.assistant', TEMPORARY_PASSWORD);
     await expect(page.getByRole('heading', { name: 'Bitácora de actividades' })).toBeVisible();
     await page.getByRole('link', { name: /Nueva actividad/ }).first().click();
 
@@ -188,19 +193,25 @@ test.describe.serial('Bitácora contra FastAPI y SQLite efímeros', () => {
     await expect(page.getByText('En revisión documental', { exact: true }).first()).toBeVisible();
     await logout(page);
 
-    await login(page, 'browser.secretary', NEW_PASSWORDS['browser.secretary']);
+    await login(page, 'browser.secretary', TEMPORARY_PASSWORD);
     await page.getByRole('link', { name: 'Control documental' }).click();
     await expect(page.getByText('Actividad integrada Playwright')).toBeVisible();
+    await page.getByRole('link', { name: 'Revisar documentación de Actividad integrada Playwright' }).click();
+    await expect(page.getByRole('heading', { name: 'Informe de la actividad' })).toBeVisible();
     await page.getByRole('button', { name: 'Solicitar corrección' }).click();
     await page.getByRole('dialog').getByLabel('Observaciones para corregir').fill('Aclarar el aprendizaje documentado.');
     await page.getByRole('dialog').getByRole('button', { name: 'Confirmar' }).click();
+    await page.getByRole('link', { name: 'Control documental' }).click();
     await expect(page.getByText('No hay documentación esperando revisión')).toBeVisible();
     await logout(page);
 
-    await login(page, 'browser.assistant', NEW_PASSWORDS['browser.assistant']);
+    await login(page, 'browser.assistant', TEMPORARY_PASSWORD);
     await expect(page.getByRole('heading', { name: 'Bitácora de actividades' })).toBeVisible();
     await page.goto(activityUrl);
     await expect(page.getByText('Requiere corrección', { exact: true }).first()).toBeVisible();
+    await page.getByRole('button', { name: /Revisión/ }).click();
+    await expect(page.getByRole('heading', { name: 'Corrección solicitada por Secretaría' })).toBeVisible();
+    await expect(page.getByText('Aclarar el aprendizaje documentado.')).toBeVisible();
     await page.getByRole('button', { name: /Informe/ }).click();
     await page.getByLabel('Aprendizaje obtenido').fill('La revisión documental mejora la precisión del proceso integrado.');
     await page.getByRole('button', { name: 'Guardar borrador' }).click();
@@ -210,10 +221,12 @@ test.describe.serial('Bitácora contra FastAPI y SQLite efímeros', () => {
     await expect(page.getByText('En revisión documental', { exact: true }).first()).toBeVisible();
     await logout(page);
 
-    await login(page, 'browser.secretary', NEW_PASSWORDS['browser.secretary']);
+    await login(page, 'browser.secretary', TEMPORARY_PASSWORD);
     await page.getByRole('link', { name: 'Control documental' }).click();
+    await page.getByRole('link', { name: 'Revisar documentación de Actividad integrada Playwright' }).click();
     await page.getByRole('button', { name: 'Marcar completa' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Confirmar' }).click();
+    await page.getByRole('link', { name: 'Control documental' }).click();
     await expect(page.getByText('No hay documentación esperando revisión')).toBeVisible();
 
     await page.goto(activityUrl);
@@ -224,7 +237,7 @@ test.describe.serial('Bitácora contra FastAPI y SQLite efímeros', () => {
     await expect(page.getByText('Requiere corrección', { exact: true }).first()).toBeVisible();
     await logout(page);
 
-    await login(page, 'browser.assistant', NEW_PASSWORDS['browser.assistant']);
+    await login(page, 'browser.assistant', TEMPORARY_PASSWORD);
     await expect(page.getByRole('heading', { name: 'Bitácora de actividades' })).toBeVisible();
     await page.goto(activityUrl);
     await page.getByRole('button', { name: /Revisión/ }).click();
@@ -232,12 +245,16 @@ test.describe.serial('Bitácora contra FastAPI y SQLite efímeros', () => {
     await page.getByRole('dialog').getByRole('button', { name: 'Confirmar' }).click();
     await logout(page);
 
-    await login(page, 'browser.secretary', NEW_PASSWORDS['browser.secretary']);
+    await login(page, 'browser.secretary', TEMPORARY_PASSWORD);
     await page.getByRole('link', { name: 'Control documental' }).click();
+    await page.getByRole('link', { name: 'Revisar documentación de Actividad integrada Playwright' }).click();
     await page.getByRole('button', { name: 'Marcar completa' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Confirmar' }).click();
-    await expect(page.getByText('No hay documentación esperando revisión')).toBeVisible();
-    await expect(page.getByText('Marcar completa: cambio registrado.')).toHaveCount(0, { timeout: 8_000 });
+    await page.getByRole('button', { name: 'Archivar actividad' }).click();
+    await page.getByRole('dialog').getByLabel('Motivo').fill('Retiro controlado del piloto integrado efímero.');
+    await page.getByRole('dialog').getByRole('button', { name: 'Confirmar' }).click();
+    await expect(page).toHaveURL(/\/bitacora\/actividades$/);
+    await expect(page.getByText('Actividad integrada Playwright')).toHaveCount(0);
     await page.screenshot({ path: 'artifacts/playwright/bitacora-real-completa.png', fullPage: true });
     expect(issues).toEqual([]);
   });

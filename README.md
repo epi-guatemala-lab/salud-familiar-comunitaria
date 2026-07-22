@@ -84,8 +84,10 @@ SFYC_BACKEND_PYTHON=/ruta/al/venv/bin/python \
 npm run test:e2e:real
 ```
 
-Esta segunda matriz valida cambio obligatorio de contraseña por rol, el ciclo
-documental con devolución/reapertura, y la creación y revocación administrativa.
+Esta segunda matriz valida acceso directo de los roles Bitácora sin cambio
+forzado, la política histórica de una cuenta administrativa sin rol de dominio,
+el ciclo documental con devolución/reapertura, revisión completa, archivado y la
+creación/revocación administrativa.
 Las capturas exitosas saneadas se regeneran bajo `artifacts/playwright/`.
 
 El mismo flujo puede ejecutarse contra un backend desplegado en modo oscuro. La

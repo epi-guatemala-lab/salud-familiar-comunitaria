@@ -1,4 +1,4 @@
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthContext } from '../src/contexts/AuthContext';
@@ -24,18 +24,18 @@ function renderWizard(initialEntry = '/bitacora/actividades/nueva') {
       ],
     },
   };
+  const router = createMemoryRouter(
+    [
+      { path: '/bitacora/actividades/nueva', element: <ActivityWizardPage /> },
+      { path: '/bitacora/actividades/:id', element: <ActivityWizardPage /> },
+      { path: '/bitacora/actividades', element: <div>Listado de actividades</div> },
+    ],
+    { initialEntries: [initialEntry] }
+  );
   return render(
     <AuthContext.Provider value={auth}>
       <ToastProvider>
-        <MemoryRouter
-          initialEntries={[initialEntry]}
-          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-        >
-          <Routes>
-            <Route path="/bitacora/actividades/nueva" element={<ActivityWizardPage />} />
-            <Route path="/bitacora/actividades/:id" element={<ActivityWizardPage />} />
-          </Routes>
-        </MemoryRouter>
+        <RouterProvider router={router} future={{ v7_startTransition: true }} />
       </ToastProvider>
     </AuthContext.Provider>
   );
@@ -93,14 +93,13 @@ describe('wizard de Bitácora', () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 
-  it('muestra los seis pasos, faltantes y advertencia de datos de pacientes', async () => {
+  it('muestra los seis pasos y el indicador de faltantes', async () => {
     renderWizard();
     await screen.findByRole('option', { name: 'Taller institucional' });
     expect(screen.getByRole('heading', { name: 'Nueva actividad' })).toBeInTheDocument();
     for (const step of ['Programación', 'Participantes', 'Informe', 'Acuerdos', 'Evidencias', 'Revisión']) {
       expect(screen.getByRole('button', { name: new RegExp(step) })).toBeInTheDocument();
     }
-    expect(screen.getByText(/No ingrese nombres, números de afiliación, DPI/i)).toBeInTheDocument();
     expect(screen.getByText(/faltantes/i)).toBeInTheDocument();
     expect(screen.getByLabelText('Título *')).toBeInTheDocument();
   });
@@ -116,6 +115,77 @@ describe('wizard de Bitácora', () => {
     expect(await screen.findByRole('option', { name: /Persona Interna.*persona\.interna.*SFYC/ })).toBeInTheDocument();
     expect(screen.getByLabelText('Cuenta institucional (opcional)')).toBeInTheDocument();
     expect(screen.queryByLabelText(/ID de cuenta/i)).not.toBeInTheDocument();
+  });
+
+  it('advierte antes de cambiar de paso con datos sin guardar', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    renderWizard();
+    await screen.findByRole('option', { name: 'Taller institucional' });
+    fireEvent.change(screen.getByLabelText('Título *'), { target: { value: 'Cambio local' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /Participantes/ }));
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(screen.getByRole('heading', { name: '1. Programación' })).toBeInTheDocument();
+    expect(screen.getByText('Cambios sin guardar')).toBeInTheDocument();
+
+    confirm.mockReturnValue(true);
+    fireEvent.click(screen.getByRole('button', { name: /Participantes/ }));
+    expect(screen.getByRole('heading', { name: '2. Participantes' })).toBeInTheDocument();
+  });
+
+  it('presenta a Secretaría el detalle completo y la última devolución', async () => {
+    vi.spyOn(bitacoraApi, 'getActivity').mockResolvedValue({
+      id: 41,
+      titulo: 'Actividad devuelta',
+      objetivo: 'Coordinar la jornada territorial.',
+      tipo: 'Taller',
+      modalidad: 'PRESENCIAL',
+      unidad_lugar: 'Unidad Central',
+      organizador: 'Equipo SFyC',
+      inicio_utc: '2026-07-23T15:00:00Z',
+      fin_utc: '2026-07-23T16:00:00Z',
+      estado_programacion: 'REALIZADA',
+      estado_documentacion: 'REQUIERE_CORRECCION',
+      created_at: '2026-07-21T20:58:27.790Z',
+      ultima_devolucion: {
+        observaciones: 'Ampliar el aprendizaje documentado.',
+        created_at: '2026-07-22T14:30:00Z',
+        usuario_nombre: 'Teresa',
+      },
+      participantes: [{ id: 1, nombre: 'Participante prueba', funcion: 'Enlace', asistio: true }],
+      informe: {
+        actor_involucrado: 'Equipo territorial',
+        que_ocurrio: 'Se realizó la actividad planificada.',
+        evidencia_disponible: 'Minuta institucional',
+        dificultades: 'Sin dificultades',
+        solucion: 'No requerida',
+        aprendizaje: 'Aprendizaje inicial',
+      },
+      acuerdos: [{
+        id: 7,
+        descripcion: 'Dar seguimiento territorial.',
+        responsables: [{ nombre: 'Responsable prueba' }],
+        vencimiento_at: '2026-07-30T15:00:00Z',
+        prioridad: 'MEDIA',
+        estado: 'PENDIENTE',
+      }],
+      evidencias: [{ id: 8, nombre_original: 'minuta_prueba.pdf', tamano_bytes: 2048, estado: 'DISPONIBLE' }],
+      recurrencia: { enabled: false },
+      version: 2,
+    });
+
+    renderWizard('/bitacora/actividades/41');
+    await screen.findByText(/Último guardado:/);
+    fireEvent.click(screen.getByRole('button', { name: /Revisión/ }));
+
+    expect(screen.getByRole('heading', { name: 'Corrección solicitada por Secretaría' })).toBeInTheDocument();
+    expect(screen.getByText('Ampliar el aprendizaje documentado.')).toBeInTheDocument();
+    expect(screen.getByText('Coordinar la jornada territorial.')).toBeInTheDocument();
+    expect(screen.getByText('Participante prueba')).toBeInTheDocument();
+    expect(screen.getByText('Se realizó la actividad planificada.')).toBeInTheDocument();
+    expect(screen.getByText('Dar seguimiento territorial.')).toBeInTheDocument();
+    expect(screen.getByText('Responsable prueba')).toBeInTheDocument();
+    expect(screen.getByText('minuta_prueba.pdf')).toBeInTheDocument();
   });
 
   it('conserva el indicador de último guardado al cargar la URL persistida', async () => {
