@@ -196,7 +196,7 @@ test.describe.serial('Bitácora contra FastAPI y SQLite efímeros', () => {
     await page.getByRole('button', { name: 'Solicitar corrección' }).click();
     await page.getByRole('dialog').getByLabel('Observaciones para corregir').fill('Aclarar el aprendizaje documentado.');
     await page.getByRole('dialog').getByRole('button', { name: 'Confirmar' }).click();
-    await page.getByRole('link', { name: 'Control documental' }).click();
+    await page.getByRole('link', { name: 'Control documental', exact: true }).click();
     await expect(page.getByText('No hay documentación esperando revisión')).toBeVisible();
     await logout(page);
 
@@ -217,11 +217,11 @@ test.describe.serial('Bitácora contra FastAPI y SQLite efímeros', () => {
     await logout(page);
 
     await login(page, 'browser.secretary', TEMPORARY_PASSWORD);
-    await page.getByRole('link', { name: 'Control documental' }).click();
+    await page.getByRole('link', { name: 'Control documental', exact: true }).click();
     await page.getByRole('link', { name: 'Revisar documentación de Actividad integrada Playwright' }).click();
     await page.getByRole('button', { name: 'Marcar completa' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Confirmar' }).click();
-    await page.getByRole('link', { name: 'Control documental' }).click();
+    await page.getByRole('link', { name: 'Control documental', exact: true }).click();
     await expect(page.getByText('No hay documentación esperando revisión')).toBeVisible();
 
     await page.goto(activityUrl);
@@ -241,7 +241,7 @@ test.describe.serial('Bitácora contra FastAPI y SQLite efímeros', () => {
     await logout(page);
 
     await login(page, 'browser.secretary', TEMPORARY_PASSWORD);
-    await page.getByRole('link', { name: 'Control documental' }).click();
+    await page.getByRole('link', { name: 'Control documental', exact: true }).click();
     await page.getByRole('link', { name: 'Revisar documentación de Actividad integrada Playwright' }).click();
     await page.getByRole('button', { name: 'Marcar completa' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Confirmar' }).click();
