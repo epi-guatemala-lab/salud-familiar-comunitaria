@@ -256,7 +256,7 @@ test.describe.serial('Bitácora contra FastAPI y SQLite efímeros', () => {
 
   test('administración crea una cuenta, entrega secreto una vez y revoca su rol/sesión', async ({ request }) => {
     const adminLogin = await request.post('http://127.0.0.1:8529/api/auth/login', {
-      data: { username: 'browser.admin', password: NEW_PASSWORDS['browser.admin'], fingerprint: 'admin-real-e2e' },
+      data: { username: 'browser.admin', password: TEMPORARY_PASSWORD, fingerprint: 'admin-real-e2e' },
     });
     expect(adminLogin.status()).toBe(200);
     const adminToken = (await adminLogin.json()).token;
