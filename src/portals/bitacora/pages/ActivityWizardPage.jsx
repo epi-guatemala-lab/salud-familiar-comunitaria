@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import Button from '../../../components/ui/Button';
 import Modal from '../../../components/ui/Modal';
 import Textarea from '../../../components/ui/Textarea';
@@ -18,6 +18,7 @@ import {
   serializeActivity,
   serializeAgreement,
   serializeParticipants,
+  serializeReport,
   validateEvidenceFiles,
 } from '../model';
 import { ErrorState, LoadingState } from '../components/AsyncState';
@@ -49,9 +50,27 @@ function validAgreement(agreement) {
   );
 }
 
+function agreementHasDraftContent(agreement) {
+  if (agreement.id) return true;
+  if (
+    agreement.descripcion?.trim()
+    || agreement.vencimiento_at
+    || agreement.evidencia_cumplimiento?.trim()
+  ) {
+    return true;
+  }
+  return agreement.responsables?.some((responsible) => (
+    responsible.usuario_id
+    || responsible.nombre?.trim()
+    || responsible.nombre_externo?.trim()
+    || responsible.organizacion_externa?.trim()
+  ));
+}
+
 export default function ActivityWizardPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const toast = useToast();
   const [draft, setDraft] = useState(() => initialDraft());
@@ -82,6 +101,13 @@ export default function ActivityWizardPage() {
   const evidenceKeysRef = useRef(new Map());
   const archiveKeyRef = useRef(null);
   const peopleRequestRef = useRef(0);
+
+  useEffect(() => {
+    const requestedStep = Number(location.state?.wizardStep);
+    if (Number.isInteger(requestedStep) && requestedStep >= 0 && requestedStep < WIZARD_STEPS.length) {
+      setStep(requestedStep);
+    }
+  }, [location.key, location.state]);
 
   useEffect(() => {
     let active = true;
@@ -251,20 +277,34 @@ export default function ActivityWizardPage() {
     const payload = serializeActivity(draft);
     const participants = serializeParticipants(draft.participantes);
     if (participants.length > 0) payload.participantes = participants;
-    if (Object.values(draft.informe).some((value) => value?.trim())) payload.informe = draft.informe;
+    if (Object.values(draft.informe).some((value) => typeof value === 'string' && value.trim())) {
+      payload.informe = serializeReport(draft.informe);
+    }
     const agreements = draft.acuerdos.filter(validAgreement).map(serializeAgreement);
     if (agreements.length > 0) payload.acuerdos = agreements;
     return payload;
   };
 
   const saveAgreements = async (activityIdentifier) => {
-    let changed = false;
+    const incomplete = draft.acuerdos.filter(
+      (agreement) => agreementHasDraftContent(agreement) && !validAgreement(agreement)
+    );
+    if (incomplete.length > 0) {
+      toast.warning(
+        'No se guardó el borrador: complete descripción, responsable y vencimiento de cada acuerdo iniciado.'
+      );
+      return false;
+    }
+    const validAgreements = draft.acuerdos.filter(validAgreement);
+    if (validAgreements.length === 0) {
+      toast.warning(
+        'No se guardó el borrador: agregue al menos un acuerdo con descripción, responsable y vencimiento.'
+      );
+      return false;
+    }
+
     const nextAgreements = [];
-    for (const agreement of draft.acuerdos) {
-      if (!validAgreement(agreement)) {
-        nextAgreements.push(agreement);
-        continue;
-      }
+    for (const agreement of validAgreements) {
       const response = agreement.id
         ? await bitacoraApi.updateAgreement(agreement.id, serializeAgreement(agreement), agreement.version)
         : await bitacoraApi.createAgreement(
@@ -273,21 +313,16 @@ export default function ActivityWizardPage() {
           agreement.client_key || newIdempotencyKey('acuerdo')
         );
       nextAgreements.push({ ...agreement, ...unwrap(response) });
-      changed = true;
     }
-    if (changed) {
-      const latest = unwrap(await bitacoraApi.getActivity(activityIdentifier));
-      mergeResponse({
-        ...latest,
-        acuerdos: [
-          ...(latest.acuerdos || []),
-          ...nextAgreements.filter((agreement) => !validAgreement(agreement)),
-        ],
-      });
-    } else {
-      setDraft((current) => ({ ...current, acuerdos: nextAgreements }));
-      toast.warning('Complete descripción, responsable y vencimiento para guardar el acuerdo.');
-    }
+    const latest = unwrap(await bitacoraApi.getActivity(activityIdentifier));
+    mergeResponse({
+      ...latest,
+      acuerdos: [
+        ...(latest.acuerdos || nextAgreements),
+        ...draft.acuerdos.filter((agreement) => !agreementHasDraftContent(agreement)),
+      ],
+    });
+    return true;
   };
 
   const uploadPending = async (activityIdentifier) => {
@@ -305,7 +340,7 @@ export default function ActivityWizardPage() {
     setPendingFiles([]);
   };
 
-  const saveCurrent = async () => {
+  const saveCurrent = async ({ afterCreateStep = null } = {}) => {
     if (step === 5 || stepDisabled) return true;
     if (!draft.titulo.trim()) {
       setStep(0);
@@ -333,12 +368,29 @@ export default function ActivityWizardPage() {
         const createdActivity = unwrap(created);
         activityIdentifier = activityId(createdActivity);
         mergeResponse(created);
-        navigate(`/bitacora/actividades/${activityIdentifier}`, { replace: true });
+        navigate(`/bitacora/actividades/${activityIdentifier}`, {
+          replace: true,
+          state: Number.isInteger(afterCreateStep) ? { wizardStep: afterCreateStep } : null,
+        });
       } else if (step === 0) {
-        mergeResponse(await bitacoraApi.updateActivity(activityIdentifier, serializeActivity(draft), {
+        const updated = await bitacoraApi.updateActivity(activityIdentifier, serializeActivity(draft), {
           version: draft.version,
           scope,
-        }));
+        });
+        mergeResponse(updated);
+        const returnedIdentifier = activityId(unwrap(updated));
+        if (
+          returnedIdentifier
+          && String(returnedIdentifier) !== String(activityIdentifier)
+        ) {
+          navigate(`/bitacora/actividades/${returnedIdentifier}`, {
+            replace: true,
+            state: {
+              wizardStep: Number.isInteger(afterCreateStep) ? afterCreateStep : step,
+            },
+          });
+          activityIdentifier = returnedIdentifier;
+        }
         setOriginalSchedule({ inicio_at: draft.inicio_at, fin_at: draft.fin_at });
         setOriginalRecurrence({
           enabled: Boolean(draft.recurrencia?.enabled),
@@ -352,9 +404,14 @@ export default function ActivityWizardPage() {
           draft.version
         ));
       } else if (step === 2) {
-        mergeResponse(await bitacoraApi.saveReport(activityIdentifier, draft.informe, draft.version));
+        mergeResponse(await bitacoraApi.saveReport(
+          activityIdentifier,
+          serializeReport(draft.informe),
+          draft.version
+        ));
       } else if (step === 3) {
-        await saveAgreements(activityIdentifier);
+        const saved = await saveAgreements(activityIdentifier);
+        if (!saved) return false;
       } else if (step === 4) {
         await uploadPending(activityIdentifier);
       }
@@ -374,8 +431,9 @@ export default function ActivityWizardPage() {
   };
 
   const next = async () => {
-    const saved = await saveCurrent();
-    if (saved) setStep((current) => Math.min(WIZARD_STEPS.length - 1, current + 1));
+    const nextStep = Math.min(WIZARD_STEPS.length - 1, step + 1);
+    const saved = await saveCurrent({ afterCreateStep: nextStep });
+    if (saved) setStep(nextStep);
   };
 
   const chooseFiles = (fileList) => {
@@ -448,13 +506,29 @@ export default function ActivityWizardPage() {
   if (loading) return <LoadingState label="Cargando actividad…" />;
   if (loadError) return <ErrorState error={loadError} onRetry={load} />;
 
+  const workflowChanged = (response) => {
+    const returnedIdentifier = activityId(unwrap(response));
+    const currentIdentifier = draft.id || id;
+    if (
+      returnedIdentifier
+      && String(returnedIdentifier) !== String(currentIdentifier)
+    ) {
+      navigate(`/bitacora/actividades/${returnedIdentifier}`, {
+        replace: true,
+        state: { wizardStep: 5 },
+      });
+      return;
+    }
+    load();
+  };
+
   const renderStep = () => {
     if (step === 0) return <ProgrammingStep draft={draft} setDraft={setDraft} disabled={stepDisabled} scope={scope} onScope={setScope} hasSeries={hasSeries} requiresReason={changeRequiresReason} typeOptions={references.types} classificationOptions={references.classifications} tagOptions={references.tags} customFields={references.customFields} referencesLoading={references.catalogsLoading} />;
     if (step === 1) return <ParticipantsStep draft={draft} setDraft={setDraft} disabled={stepDisabled} people={references.people} peopleLoading={references.peopleLoading} onSearchPeople={searchPeople} />;
     if (step === 2) return <ReportStep draft={draft} setDraft={setDraft} disabled={stepDisabled} />;
     if (step === 3) return <AgreementsStep draft={draft} setDraft={setDraft} disabled={stepDisabled} onArchive={(agreement) => { archiveKeyRef.current = newIdempotencyKey('archivar'); setArchiveTarget(agreement); }} people={references.people} peopleLoading={references.peopleLoading} onSearchPeople={searchPeople} />;
     if (step === 4) return <EvidenceStep draft={draft} pendingFiles={pendingFiles} onFiles={chooseFiles} disabled={stepDisabled} onDownload={downloadEvidence} onReplace={replaceEvidence} />;
-    return <ReviewStep draft={draft} missing={missing} user={user} secretary={secretary} onWorkflow={() => load()} />;
+    return <ReviewStep draft={draft} missing={missing} user={user} secretary={secretary} onWorkflow={workflowChanged} />;
   };
 
   return (

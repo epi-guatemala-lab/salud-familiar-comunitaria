@@ -2,14 +2,19 @@ import { describe, expect, it } from 'vitest';
 import {
   allMissingFields,
   buildRRule,
+  activityToDraft,
   dateBoundaryUtc,
   initialDraft,
   normalizePaginated,
   programmingMissingFields,
+  parseRRule,
+  rewriteRRule,
   serializeAgreement,
   serializeActivity,
+  serializeReport,
   serializeParticipants,
   toUtcIso,
+  validateEvidenceFiles,
 } from '../src/portals/bitacora/model';
 
 describe('modelo de Bitácora', () => {
@@ -108,5 +113,93 @@ describe('modelo de Bitácora', () => {
       responsables: [{ usuario_id: 7, nombre: null, nombre_externo: null }],
       vencimiento_at: '2026-07-30T14:00:00.000Z',
     });
+  });
+
+  it('no reenvía metadatos de solo lectura al guardar un informe corregido', () => {
+    const serialized = serializeReport({
+      id: 99,
+      actividad_id: 7,
+      version: 3,
+      updated_at: '2026-07-21T00:00:00Z',
+      actor_involucrado: '  Equipo institucional  ',
+      que_ocurrio: 'Actividad realizada',
+      evidencia_disponible: 'Minuta',
+      dificultades: 'Sin dificultades',
+      solucion: 'Coordinación',
+      aprendizaje: 'Lección documentada',
+    });
+    expect(serialized).toEqual({
+      actor_involucrado: 'Equipo institucional',
+      que_ocurrio: 'Actividad realizada',
+      evidencia_disponible: 'Minuta',
+      dificultades: 'Sin dificultades',
+      solucion: 'Coordinación',
+      aprendizaje: 'Lección documentada',
+    });
+  });
+
+  it('rechaza formato, tamaño individual y total excesivos de evidencias', () => {
+    expect(validateEvidenceFiles([
+      { name: 'archivo.exe', type: 'application/x-msdownload', size: 10 },
+    ])).toContain('archivo.exe: formato no permitido.');
+    expect(validateEvidenceFiles([
+      { name: 'grande.pdf', type: 'application/pdf', size: 25 * 1024 * 1024 + 1 },
+    ])).toContain('grande.pdf: supera 25 MiB.');
+    expect(validateEvidenceFiles([
+      { name: 'adicional.pdf', type: 'application/pdf', size: 2 * 1024 * 1024 },
+    ], 99 * 1024 * 1024)).toContain('La actividad supera 100 MiB de evidencias.');
+  });
+
+  it('interpreta la RRULE que realmente devuelve FastAPI al editar una serie', () => {
+    const draft = activityToDraft({
+      id: 31,
+      titulo: 'Serie anual',
+      recurrencia: {
+        enabled: true,
+        serie_id: 9,
+        timezone: 'America/Guatemala',
+        rrule: 'FREQ=YEARLY;INTERVAL=2;BYMONTH=7;BYMONTHDAY=21;COUNT=4',
+      },
+    });
+    expect(draft.recurrencia).toMatchObject({
+      enabled: true,
+      frecuencia: 'YEARLY',
+      intervalo: 2,
+      fin_tipo: 'conteo',
+      conteo: 4,
+      bymonth: ['7'],
+      bymonthday: ['21'],
+    });
+  });
+
+  it('convierte UNTIL UTC a la fecha de Guatemala y conserva componentes avanzados', () => {
+    expect(parseRRule(
+      'RRULE:FREQ=MONTHLY;INTERVAL=1;BYDAY=MO,TU;BYSETPOS=-1;UNTIL=20260806T055900Z'
+    )).toMatchObject({
+      frecuencia: 'MONTHLY',
+      intervalo: 1,
+      fin_tipo: 'fecha',
+      hasta: '2026-08-05',
+      byday: ['MO', 'TU'],
+      bysetpos: ['-1'],
+    });
+  });
+
+  it('reescribe frecuencia y final sin perder BYDAY ni otros componentes RFC 5545', () => {
+    const rewritten = rewriteRRule(
+      'FREQ=WEEKLY;INTERVAL=1;BYDAY=MO,WE;WKST=MO;COUNT=8',
+      {
+        frecuencia: 'MONTHLY',
+        intervalo: 2,
+        fin_tipo: 'fecha',
+        hasta: '2026-08-05',
+      }
+    );
+    expect(rewritten).toContain('FREQ=MONTHLY');
+    expect(rewritten).toContain('INTERVAL=2');
+    expect(rewritten).toContain('BYDAY=MO,WE');
+    expect(rewritten).toContain('WKST=MO');
+    expect(rewritten).not.toContain('COUNT=');
+    expect(rewritten).toContain('UNTIL=20260806T055900Z');
   });
 });

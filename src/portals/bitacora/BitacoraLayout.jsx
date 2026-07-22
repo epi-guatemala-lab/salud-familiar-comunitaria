@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { bitacoraApi } from './api';
 import { hasBitacoraCapability, isAdmin, isBitacoraSecretary, userRoles } from '../../lib/permissions';
 import { normalizePaginated } from './model';
+import { EVENTS } from '../../config/constants';
 
 function roleLabel(user) {
   if (isAdmin(user)) return 'Administrador SFyC';
@@ -20,6 +21,8 @@ export default function BitacoraLayout() {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [unread, setUnread] = useState(0);
+  const menuButtonRef = useRef(null);
+  const navigationRef = useRef(null);
   const secretary = isBitacoraSecretary(user);
   const canCreate = hasBitacoraCapability(user, 'create');
 
@@ -35,11 +38,35 @@ export default function BitacoraLayout() {
     };
     load();
     const timer = window.setInterval(load, 60000);
+    window.addEventListener(EVENTS.BITACORA_NOTIFICATIONS_CHANGED, load);
     return () => {
       alive = false;
       window.clearInterval(timer);
+      window.removeEventListener(EVENTS.BITACORA_NOTIFICATIONS_CHANGED, load);
     };
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const previouslyFocused = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    const focusTimer = window.setTimeout(() => {
+      navigationRef.current?.querySelector('a[href]')?.focus();
+    }, 0);
+    const onKeyDown = (event) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      setMenuOpen(false);
+    };
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.clearTimeout(focusTimer);
+      document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      if (previouslyFocused instanceof HTMLElement) previouslyFocused.focus();
+    };
+  }, [menuOpen]);
 
   if (user?.password_reset_required) {
     return <Navigate to="/bitacora/cambiar-contrasena" replace />;
@@ -77,6 +104,7 @@ export default function BitacoraLayout() {
             </div>
             <LogoutButton className="min-h-11" />
             <button
+              ref={menuButtonRef}
               type="button"
               className="grid min-h-11 min-w-11 place-items-center rounded-lg border border-igss-200 text-xl text-igss-900 md:hidden"
               aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
@@ -92,6 +120,7 @@ export default function BitacoraLayout() {
 
       <div className="mx-auto flex w-full max-w-[1600px] flex-1">
         <aside
+          ref={navigationRef}
           id="bitacora-navigation"
           className={`${menuOpen ? 'block' : 'hidden'} fixed inset-y-0 left-0 z-40 w-72 border-r border-gray-200 bg-white pt-4 shadow-xl md:static md:block md:w-60 md:pt-0 md:shadow-none`}
         >

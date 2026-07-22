@@ -37,6 +37,7 @@ export const STORAGE_KEYS = {
 // Eventos custom para coordinar logout / auth-invalidation entre listeners.
 export const EVENTS = {
   AUTH_INVALIDATED: 'sfyc:auth:invalidated',
+  BITACORA_NOTIFICATIONS_CHANGED: 'sfyc:bitacora:notifications-changed',
   TOAST: 'sfyc:toast',
 };
 

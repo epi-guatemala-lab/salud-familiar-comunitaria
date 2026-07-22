@@ -72,6 +72,7 @@ export default function WorkflowActions({ activity, user, onChanged }) {
   const [reason, setReason] = useState('');
   const [scope, setScope] = useState('single');
   const [submitting, setSubmitting] = useState(false);
+  const [conflict, setConflict] = useState(false);
   const idempotencyKeyRef = useRef(null);
   const secretary = isBitacoraSecretary(user);
   const collaborator = hasBitacoraCapability(user, 'submit');
@@ -129,9 +130,16 @@ export default function WorkflowActions({ activity, user, onChanged }) {
         idempotencyKey: idempotencyKeyRef.current,
       });
       toast.success(`${meta.label}: cambio registrado.`);
+      setConflict(false);
       close();
       onChanged?.(updated);
     } catch (error) {
+      if (error?.status === 409 || error?.code === 'VERSION_CONFLICT') {
+        setConflict(true);
+        close();
+        toast.error('Otra persona modificó esta actividad. Cargue la versión reciente antes de continuar.');
+        return;
+      }
       const missing = error?.context?.missing_fields || error?.context?.faltantes;
       const suffix = Array.isArray(missing) && missing.length > 0 ? ` Faltan: ${missing.join(', ')}.` : '';
       toast.error(`${error?.message || 'No se pudo aplicar el cambio.'}${suffix}`);
@@ -144,6 +152,24 @@ export default function WorkflowActions({ activity, user, onChanged }) {
 
   return (
     <>
+      {conflict && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-300 bg-red-50 p-3" role="alert">
+          <p className="text-sm font-semibold text-red-900">
+            Otra persona modificó esta actividad; no se aplicó su acción.
+          </p>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="min-h-11"
+            onClick={() => {
+              setConflict(false);
+              onChanged?.();
+            }}
+          >
+            Cargar versión reciente
+          </Button>
+        </div>
+      )}
       <div className="flex flex-wrap gap-2" aria-label="Acciones del flujo documental">
         {actions.map((action) => (
           <Button
@@ -152,6 +178,7 @@ export default function WorkflowActions({ activity, user, onChanged }) {
             size="sm"
             className="min-h-11"
             onClick={() => {
+              setConflict(false);
               setScope('single');
               idempotencyKeyRef.current = newIdempotencyKey(action);
               setSelected(action);
@@ -175,7 +202,7 @@ export default function WorkflowActions({ activity, user, onChanged }) {
               variant={selected ? META[selected].tone : 'primary'}
               className="min-h-11"
               loading={submitting}
-              disabled={selected && META[selected].reason && !reason.trim()}
+              disabled={selected && META[selected].reason && reason.trim().length < 3}
               onClick={run}
             >
               Confirmar
@@ -194,6 +221,7 @@ export default function WorkflowActions({ activity, user, onChanged }) {
             onChange={(event) => setReason(event.target.value)}
             className="mt-4"
             required
+            hint="Escriba al menos 3 caracteres; quedará registrado en auditoría."
             maxLength={1000}
           />
         )}

@@ -8,6 +8,7 @@ import { normalizePaginated } from '../model';
 import { useRemote } from '../useRemote';
 import Pagination from '../components/Pagination';
 import { EmptyState, ErrorState, LoadingState } from '../components/AsyncState';
+import { EVENTS } from '../../../config/constants';
 
 function destination(notification) {
   const value = notification.url || notification.enlace || notification.target_url;
@@ -46,6 +47,7 @@ export default function NotificationsPage() {
           total: onlyUnread ? Math.max(0, normalized.total - 1) : normalized.total,
         };
       });
+      window.dispatchEvent(new CustomEvent(EVENTS.BITACORA_NOTIFICATIONS_CHANGED));
     } catch (requestError) {
       toast.error(requestError?.message || 'No se pudo marcar la notificación.');
     }
