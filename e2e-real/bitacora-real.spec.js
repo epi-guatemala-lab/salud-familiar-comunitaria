@@ -248,7 +248,7 @@ test.describe.serial('Bitácora contra FastAPI y SQLite efímeros', () => {
     await page.getByRole('button', { name: 'Archivar actividad' }).click();
     await page.getByRole('dialog').getByLabel('Motivo').fill('Retiro controlado del piloto integrado efímero.');
     await page.getByRole('dialog').getByRole('button', { name: 'Confirmar' }).click();
-    await expect(page).toHaveURL(/\/bitacora\/actividades$/);
+    await expect(page).toHaveURL(/\/bitacora\/control$/);
     await expect(page.getByText('Actividad integrada Playwright')).toHaveCount(0);
     await page.screenshot({ path: 'artifacts/playwright/bitacora-real-completa.png', fullPage: true });
     expect(issues).toEqual([]);
