@@ -1,7 +1,12 @@
 import { expect, test } from '@playwright/test';
+import fs from 'node:fs';
 
-const TEMPORARY_PASSWORD = 'TEST_ONLY_BrowserE2E9'; // pragma: allowlist secret
-const NEW_PASSWORDS = {
+const liveCredentials = process.env.SFYC_LIVE_SMOKE_CREDENTIALS
+  ? JSON.parse(fs.readFileSync(process.env.SFYC_LIVE_SMOKE_CREDENTIALS, 'utf8'))
+  : null;
+const TEMPORARY_PASSWORD = liveCredentials?.temporary_password
+  || 'TEST_ONLY_BrowserE2E9'; // pragma: allowlist secret
+const NEW_PASSWORDS = liveCredentials?.new_passwords || {
   'browser.assistant': 'TEST_ONLY_AssistantNew9',
   'browser.director': 'TEST_ONLY_DirectorNew9',
   'browser.secretary': 'TEST_ONLY_SecretaryNew9',
@@ -107,7 +112,13 @@ test.describe.serial('Bitácora contra FastAPI y SQLite efímeros', () => {
 
     await page.getByLabel('Cada cuántos períodos').fill('2');
     await page.getByLabel('Esta y las futuras').check();
+    const updateFinished = page.waitForResponse((response) => (
+      response.request().method() === 'PUT'
+      && /\/api\/bitacora\/actividades\/\d+/.test(response.url())
+    ));
     await page.getByRole('button', { name: 'Guardar borrador' }).click();
+    const updateResponse = await updateFinished;
+    expect(updateResponse.ok()).toBe(true);
     await expect(page.getByLabel('RRULE avanzada (opcional)')).toHaveValue(/INTERVAL=2/);
     await page.reload();
     await expect(page.getByLabel('Frecuencia')).toHaveValue('YEARLY');
