@@ -162,17 +162,22 @@ function CustomFieldInput({ field, value, disabled, onChange }) {
   );
 }
 
-export function StepNavigation({ current, onSelect }) {
+export function StepNavigation({ current, onSelect, disabled = false }) {
   return (
-    <nav aria-label="Pasos de la actividad" className="overflow-x-auto pb-1">
+    <nav
+      aria-label="Pasos de la actividad"
+      aria-busy={disabled || undefined}
+      className="overflow-x-auto pb-1"
+    >
       <ol className="flex min-w-max gap-2">
         {WIZARD_STEPS.map((label, index) => (
           <li key={label}>
             <button
               type="button"
               onClick={() => onSelect(index)}
+              disabled={disabled}
               aria-current={current === index ? 'step' : undefined}
-              className={`flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm font-semibold ${
+              className={`flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm font-semibold disabled:cursor-wait disabled:opacity-60 ${
                 current === index
                   ? 'border-igss-700 bg-igss-700 text-white'
                   : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'

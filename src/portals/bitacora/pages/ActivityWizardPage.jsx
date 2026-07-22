@@ -561,7 +561,7 @@ export default function ActivityWizardPage() {
         </div>
       )}
 
-      <StepNavigation current={step} onSelect={setStep} />
+      <StepNavigation current={step} onSelect={setStep} disabled={saving} />
 
       <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6" aria-labelledby="current-step-title">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 pb-4">

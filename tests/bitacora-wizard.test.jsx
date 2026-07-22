@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthContext } from '../src/contexts/AuthContext';
 import { ToastProvider } from '../src/contexts/ToastContext';
+import { StepNavigation } from '../src/portals/bitacora/components/WizardSteps';
 import ActivityWizardPage from '../src/portals/bitacora/pages/ActivityWizardPage';
 import { bitacoraApi } from '../src/portals/bitacora/api';
 
@@ -77,6 +78,19 @@ describe('wizard de Bitácora', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('bloquea el cambio de paso mientras un borrador se está guardando', () => {
+    const onSelect = vi.fn();
+    render(<StepNavigation current={2} onSelect={onSelect} disabled />);
+
+    const navigation = screen.getByRole('navigation', { name: 'Pasos de la actividad' });
+    expect(navigation).toHaveAttribute('aria-busy', 'true');
+    for (const button of screen.getAllByRole('button')) {
+      expect(button).toBeDisabled();
+      fireEvent.click(button);
+    }
+    expect(onSelect).not.toHaveBeenCalled();
   });
 
   it('muestra los seis pasos, faltantes y advertencia de datos de pacientes', async () => {
