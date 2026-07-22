@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import { bitacoraApi } from '../api';
@@ -6,41 +6,44 @@ import { normalizePaginated } from '../model';
 import { useRemote } from '../useRemote';
 import ActivityCard from '../components/ActivityCard';
 import WorkflowActions from '../components/WorkflowActions';
+import Pagination from '../components/Pagination';
 import { EmptyState, ErrorState, LoadingState } from '../components/AsyncState';
+
+const PAGE_LIMIT = 20;
 
 export default function ControlPage() {
   const { user } = useAuth();
+  const [sentPage, setSentPage] = useState(1);
+  const [missingPage, setMissingPage] = useState(1);
   const loader = useCallback(
     async () => {
       const [sent, missing] = await Promise.all([
-        bitacoraApi.listActivities({ estado_documentacion: 'ENVIADA', page: 1, limit: 100 }),
-        bitacoraApi.listActivities({ completitud: 'incompleta', page: 1, limit: 100 }),
+        bitacoraApi.listActivities({
+          estado_documentacion: 'ENVIADA', page: sentPage, limit: PAGE_LIMIT,
+        }),
+        bitacoraApi.listActivities({
+          completitud: 'incompleta',
+          estado_documentacion_excluir: 'ENVIADA',
+          page: missingPage,
+          limit: PAGE_LIMIT,
+        }),
       ]);
       return { sent: normalizePaginated(sent), missing: normalizePaginated(missing) };
     },
-    []
+    [missingPage, sentPage]
   );
-  const { data, loading, error, reload, setData } = useRemote(loader);
-
-  const updateActivity = (section, id, updated) => {
-    if (!updated) return reload();
-    const normalized = updated.actividad || updated;
-    setData((previous) => ({
-      ...previous,
-      [section]: {
-        ...previous[section],
-        items: previous[section].items
-          .map((activity) => (activity.id === id ? { ...activity, ...normalized } : activity))
-          .filter((activity) => section !== 'sent' || activity.estado_documentacion === 'ENVIADA'),
-      },
-    }));
-  };
+  const { data, loading, error, reload } = useRemote(loader);
 
   const sentItems = useMemo(() => data?.sent?.items || [], [data]);
-  const missingItems = useMemo(
-    () => (data?.missing?.items || []).filter((item) => item.estado_documentacion !== 'ENVIADA'),
-    [data]
-  );
+  const missingItems = useMemo(() => data?.missing?.items || [], [data]);
+
+  const refreshAfterControl = useCallback(() => {
+    if (sentItems.length === 1 && sentPage > 1) {
+      setSentPage((current) => current - 1);
+      return;
+    }
+    reload();
+  }, [reload, sentItems.length, sentPage]);
 
   if (loading && !data) return <LoadingState label="Cargando control documental…" />;
   if (error && !data) return <ErrorState error={error} onRetry={reload} />;
@@ -74,13 +77,21 @@ export default function ControlPage() {
                   <WorkflowActions
                     activity={activity}
                     user={user}
-                    onChanged={(updated) => updateActivity('sent', activity.id, updated)}
+                    onChanged={refreshAfterControl}
                   />
                 </div>
               </div>
             ))}
           </div>
         )}
+        <div className="mt-4">
+          <Pagination
+            page={data?.sent?.page || sentPage}
+            limit={data?.sent?.limit || PAGE_LIMIT}
+            total={data?.sent?.total || 0}
+            onPage={setSentPage}
+          />
+        </div>
       </section>
 
       <section aria-labelledby="missing-title">
@@ -91,11 +102,19 @@ export default function ControlPage() {
           <EmptyState title="No hay faltantes detectados" />
         ) : (
           <div className="space-y-3">
-            {missingItems.slice(0, 25).map((activity) => (
+            {missingItems.map((activity) => (
               <ActivityCard key={activity.id} activity={activity} compact />
             ))}
           </div>
         )}
+        <div className="mt-4">
+          <Pagination
+            page={data?.missing?.page || missingPage}
+            limit={data?.missing?.limit || PAGE_LIMIT}
+            total={data?.missing?.total || 0}
+            onPage={setMissingPage}
+          />
+        </div>
       </section>
     </div>
   );

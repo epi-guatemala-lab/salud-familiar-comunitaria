@@ -147,6 +147,112 @@ export function initialAgreement() {
   };
 }
 
+const RRULE_FREQUENCIES = new Set(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']);
+
+function rruleComponents(value = '') {
+  const raw = String(value).trim().replace(/^RRULE:/i, '').toUpperCase();
+  const components = {};
+  raw.split(';').forEach((part) => {
+    const separator = part.indexOf('=');
+    if (separator <= 0) return;
+    const key = part.slice(0, separator).trim();
+    const componentValue = part.slice(separator + 1).trim();
+    if (key && componentValue && components[key] === undefined) {
+      components[key] = componentValue;
+    }
+  });
+  return { raw, components };
+}
+
+function rruleUntilDate(value) {
+  const match = String(value || '').match(
+    /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?$/
+  );
+  if (!match) return '';
+  const [, year, month, day, hour, minute, second, utcMarker] = match;
+  if (!hour || !utcMarker) return `${year}-${month}-${day}`;
+  const iso = `${year}-${month}-${day}T${hour}:${minute}:${second}Z`;
+  return toDateTimeInput(iso).slice(0, 10);
+}
+
+/**
+ * Interpreta la forma que entrega FastAPI (`rrule` como texto RFC 5545) para
+ * que los controles simplificados nunca muestren sus defaults como si fueran
+ * datos reales de una serie existente. Los componentes avanzados se conservan
+ * íntegros en `rrule` y también se exponen para pruebas/consumidores futuros.
+ */
+export function parseRRule(value) {
+  const { raw, components } = rruleComponents(value);
+  if (!raw) return null;
+  const frequency = components.FREQ;
+  if (!RRULE_FREQUENCIES.has(frequency)) return { rrule: raw, componentes: components };
+
+  const interval = Number(components.INTERVAL || 1);
+  const count = Number(components.COUNT);
+  const result = {
+    rrule: raw,
+    componentes: components,
+    frecuencia: frequency,
+    intervalo: Number.isInteger(interval) && interval > 0 ? interval : 1,
+  };
+  if (Number.isInteger(count) && count > 0) {
+    result.fin_tipo = 'conteo';
+    result.conteo = count;
+  } else if (components.UNTIL) {
+    result.fin_tipo = 'fecha';
+    result.hasta = rruleUntilDate(components.UNTIL);
+  }
+  if (components.BYDAY) result.byday = components.BYDAY.split(',');
+  if (components.BYMONTHDAY) result.bymonthday = components.BYMONTHDAY.split(',');
+  if (components.BYMONTH) result.bymonth = components.BYMONTH.split(',');
+  if (components.BYSETPOS) result.bysetpos = components.BYSETPOS.split(',');
+  if (components.WKST) result.wkst = components.WKST;
+  return result;
+}
+
+function rruleUntilFromDate(dateValue) {
+  if (!dateValue) return null;
+  const instant = new Date(toUtcIso(`${dateValue}T23:59`));
+  if (Number.isNaN(instant.getTime())) return null;
+  const compact = instant.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+  return compact;
+}
+
+/** Conserva BYDAY/BYMONTH/... al editar los controles simples de una RRULE. */
+export function rewriteRRule(value, recurrence = {}) {
+  const { raw } = rruleComponents(value);
+  const ordered = raw
+    .split(';')
+    .filter(Boolean)
+    .map((part) => {
+      const separator = part.indexOf('=');
+      return separator > 0
+        ? [part.slice(0, separator), part.slice(separator + 1)]
+        : [part, ''];
+    });
+  const set = (key, nextValue) => {
+    const index = ordered.findIndex(([current]) => current === key);
+    if (nextValue === null || nextValue === undefined || nextValue === '') {
+      if (index >= 0) ordered.splice(index, 1);
+      return;
+    }
+    if (index >= 0) ordered[index] = [key, String(nextValue).toUpperCase()];
+    else ordered.push([key, String(nextValue).toUpperCase()]);
+  };
+
+  set('FREQ', RRULE_FREQUENCIES.has(recurrence.frecuencia) ? recurrence.frecuencia : 'WEEKLY');
+  set('INTERVAL', Math.max(1, Number(recurrence.intervalo) || 1));
+  if (recurrence.fin_tipo === 'conteo') {
+    set('UNTIL', null);
+    const count = Number(recurrence.conteo);
+    set('COUNT', Number.isInteger(count) && count > 0 ? count : null);
+  } else {
+    set('COUNT', null);
+    set('UNTIL', rruleUntilFromDate(recurrence.hasta));
+  }
+  return ordered.map(([key, componentValue]) => `${key}=${componentValue}`).join(';');
+}
+
 function asArray(value) {
   if (Array.isArray(value)) return value;
   return [];
@@ -156,6 +262,8 @@ export function activityToDraft(activity = {}) {
   const base = initialDraft();
   const report = activity.informe || {};
   const recurrence = activity.recurrencia || activity.serie || {};
+  const recurrenceRule = recurrence.rrule || activity.rrule || '';
+  const parsedRule = parseRRule(recurrenceRule);
   const tagDetails = asArray(activity.etiquetas);
   return {
     ...base,
@@ -178,10 +286,14 @@ export function activityToDraft(activity = {}) {
     recurrencia: {
       ...base.recurrencia,
       ...recurrence,
-      enabled: Boolean(recurrence.enabled ?? recurrence.rrule ?? activity.rrule),
-      rrule: recurrence.rrule || activity.rrule || '',
-      hasta: toDateInput(recurrence.hasta),
-      fin_tipo: recurrence.conteo ? 'conteo' : 'fecha',
+      ...(parsedRule || {}),
+      enabled: Boolean(recurrence.enabled ?? recurrenceRule),
+      rrule: recurrenceRule,
+      frecuencia: parsedRule?.frecuencia || recurrence.frecuencia || base.recurrencia.frecuencia,
+      intervalo: parsedRule?.intervalo || recurrence.intervalo || base.recurrencia.intervalo,
+      hasta: parsedRule?.hasta || toDateInput(recurrence.hasta),
+      conteo: parsedRule?.conteo || recurrence.conteo || base.recurrencia.conteo,
+      fin_tipo: parsedRule?.fin_tipo || (recurrence.conteo ? 'conteo' : 'fecha'),
     },
     participantes:
       asArray(activity.participantes).length > 0 ? activity.participantes : base.participantes,
@@ -269,10 +381,12 @@ export function allMissingFields(draft, customFields = []) {
 export function buildRRule(recurrence = {}) {
   if (!recurrence.enabled) return null;
   if (recurrence.rrule?.trim()) {
-    const raw = recurrence.rrule.trim().replace(/^RRULE:/i, '').toUpperCase();
-    if (!/(^|;)FREQ=(DAILY|WEEKLY|MONTHLY|YEARLY)(;|$)/.test(raw)) return null;
-    if (!/(^|;)(COUNT=\d+|UNTIL=\d{8}T\d{6}Z)(;|$)/.test(raw)) return null;
-    return raw;
+    const parsed = parseRRule(recurrence.rrule);
+    if (!parsed?.frecuencia) return null;
+    const count = parsed.componentes?.COUNT;
+    const until = parsed.componentes?.UNTIL;
+    if (!(count && /^\d+$/.test(count) && Number(count) > 0) && !until) return null;
+    return parsed.rrule;
   }
   const frequency = recurrence.frecuencia;
   if (!['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'].includes(frequency)) return null;
@@ -388,6 +502,12 @@ export function serializeParticipants(participants = []) {
         responsable_documental: Boolean(participant.responsable_documental),
       };
     });
+}
+
+export function serializeReport(report = {}) {
+  return Object.fromEntries(
+    REPORT_FIELDS.map(([field]) => [field, String(report[field] || '').trim()])
+  );
 }
 
 export function serializeAgreement(agreement) {

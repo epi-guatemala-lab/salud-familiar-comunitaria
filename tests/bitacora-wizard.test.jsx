@@ -79,8 +79,9 @@ describe('wizard de Bitácora', () => {
     vi.restoreAllMocks();
   });
 
-  it('muestra los seis pasos, faltantes y advertencia de datos de pacientes', () => {
+  it('muestra los seis pasos, faltantes y advertencia de datos de pacientes', async () => {
     renderWizard();
+    await screen.findByRole('option', { name: 'Taller institucional' });
     expect(screen.getByRole('heading', { name: 'Nueva actividad' })).toBeInTheDocument();
     for (const step of ['Programación', 'Participantes', 'Informe', 'Acuerdos', 'Evidencias', 'Revisión']) {
       expect(screen.getByRole('button', { name: new RegExp(step) })).toBeInTheDocument();

@@ -71,7 +71,20 @@ npm run test:e2e      # Playwright/Chromium con API aislada
 
 Las pruebas cubren permisos de dominio, reglas de faltantes, RRULE, conversión de
 zona horaria, render del wizard y flujos de navegador con teclado, RBAC y layout
-móvil. CI conserva trazas, videos y capturas únicamente cuando falla el E2E.
+móvil. CI conserva trazas, videos y capturas cuando falla el E2E.
+
+La matriz integrada levanta FastAPI y una SQLite temporal, aplica todas las
+migraciones, crea únicamente cuentas sintéticas y descarta la base al terminar:
+
+```bash
+SFYC_BACKEND_DIR=/ruta/al/sfyc-backend \
+SFYC_BACKEND_PYTHON=/ruta/al/venv/bin/python \
+npm run test:e2e:real
+```
+
+Esta segunda matriz valida cambio obligatorio de contraseña por rol, el ciclo
+documental con devolución/reapertura, y la creación y revocación administrativa.
+Las capturas exitosas saneadas se regeneran bajo `artifacts/playwright/`.
 
 ## Convenciones
 

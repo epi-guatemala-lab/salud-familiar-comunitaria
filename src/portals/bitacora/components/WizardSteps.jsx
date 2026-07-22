@@ -16,6 +16,8 @@ import {
   PRIORITIES,
   PROGRAM_STATUS_META,
   REPORT_FIELDS,
+  parseRRule,
+  rewriteRRule,
 } from '../model';
 import StatusBadge from './StatusBadge';
 import WorkflowActions from './WorkflowActions';
@@ -211,10 +213,19 @@ export function ProgrammingStep({
       tipo_valor_id: selected?.id || '',
     }));
   };
-  const setRecurrence = (field, value) => setDraft((current) => ({
-    ...current,
-    recurrencia: { ...current.recurrencia, [field]: value },
-  }));
+  const setRecurrence = (field, value) => setDraft((current) => {
+    let recurrence = { ...current.recurrencia, [field]: value };
+    if (field === 'rrule') {
+      const parsed = parseRRule(value);
+      if (parsed?.frecuencia) recurrence = { ...recurrence, ...parsed, rrule: value };
+    } else if (
+      current.recurrencia.rrule?.trim()
+      && ['frecuencia', 'intervalo', 'fin_tipo', 'hasta', 'conteo'].includes(field)
+    ) {
+      recurrence.rrule = rewriteRRule(current.recurrencia.rrule, recurrence);
+    }
+    return { ...current, recurrencia: recurrence };
+  });
   const selectedTags = (draft.etiquetas || []).map(String);
   const historicalTags = (draft.etiqueta_detalles || []).filter((current) => (
     !tagOptions.some((option) => String(option.id) === String(current.id))
