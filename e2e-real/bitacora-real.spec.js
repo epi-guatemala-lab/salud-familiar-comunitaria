@@ -74,11 +74,6 @@ test.describe.serial('Bitácora contra FastAPI y SQLite efímeros', () => {
     }
 
     await login(page, 'browser.admin', TEMPORARY_PASSWORD);
-    await expect(page.getByRole('heading', { name: 'Cambie su contraseña temporal' })).toBeVisible();
-    await page.getByLabel('Contraseña temporal').fill(TEMPORARY_PASSWORD);
-    await page.locator('input[name="new-password"]').fill(NEW_PASSWORDS['browser.admin']);
-    await page.locator('input[name="confirm-password"]').fill(NEW_PASSWORDS['browser.admin']);
-    await page.getByRole('button', { name: 'Guardar y continuar' }).click();
     await expect(page.getByRole('heading', { name: 'Bitácora de actividades' })).toBeVisible();
     await expect(page.getByText('Administrador SFyC', { exact: true })).toBeVisible();
     await logout(page);
