@@ -86,6 +86,16 @@ Esta segunda matriz valida cambio obligatorio de contraseña por rol, el ciclo
 documental con devolución/reapertura, y la creación y revocación administrativa.
 Las capturas exitosas saneadas se regeneran bajo `artifacts/playwright/`.
 
+El mismo flujo puede ejecutarse contra un backend desplegado en modo oscuro. La
+credencial debe ser un JSON temporal fuera del repositorio y eliminarse al
+terminar; nunca se versionan contraseñas reales:
+
+```bash
+SFYC_LIVE_API_URL=https://servidor.example/sfyc \
+SFYC_LIVE_SMOKE_CREDENTIALS=/ruta/privada/credenciales-temporales.json \
+npm run test:e2e:live
+```
+
 ## Convenciones
 
 - Código en inglés, UI en español.
