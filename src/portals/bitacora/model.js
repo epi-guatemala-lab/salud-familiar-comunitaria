@@ -67,6 +67,7 @@ export const REPORT_FIELDS = [
   ['evidencia_disponible', 'Evidencia textual disponible'],
   ['dificultades', 'Dificultades encontradas'],
   ['solucion', 'Solución implementada'],
+  ['compromisos', 'Compromisos'],
   ['aprendizaje', 'Aprendizaje obtenido'],
 ];
 
