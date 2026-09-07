@@ -126,6 +126,7 @@ describe('modelo de Bitácora', () => {
       evidencia_disponible: 'Minuta',
       dificultades: 'Sin dificultades',
       solucion: 'Coordinación',
+      compromisos: '  Compromisos institucionales  ',
       aprendizaje: 'Lección documentada',
     });
     expect(serialized).toEqual({
@@ -134,6 +135,7 @@ describe('modelo de Bitácora', () => {
       evidencia_disponible: 'Minuta',
       dificultades: 'Sin dificultades',
       solucion: 'Coordinación',
+      compromisos: 'Compromisos institucionales',
       aprendizaje: 'Lección documentada',
     });
   });
