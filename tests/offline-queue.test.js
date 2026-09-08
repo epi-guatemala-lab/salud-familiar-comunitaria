@@ -4,6 +4,7 @@ import {
   enqueue,
   flush,
   getCount,
+  getSnapshot,
   loadQueue,
   subscribe,
 } from '../src/lib/offlineQueue';
@@ -95,6 +96,51 @@ describe('cola offline (motor)', () => {
     expect(res).toEqual({ sent: 0, failed: 0, throttled: false });
     expect(apiPost).not.toHaveBeenCalled();
     warnSpy.mockRestore();
+  });
+
+  it('no pierde ítems encolados DURANTE un flush en curso (race del snapshot)', async () => {
+    // Regresión del bug crítico: el saveQueue(remaining) final pisaba lo
+    // encolado a mitad de pase y lo perdía en silencio.
+    let resolveFirst;
+    apiPost.mockImplementationOnce(() => new Promise((res) => { resolveFirst = res; }));
+    enqueue(PATH, { n: 1 });
+    const done = flush();
+    // El POST del único ítem está en vuelo cuando llega una 2ª encuesta.
+    enqueue(PATH, { n: 2 });
+    resolveFirst({ ok: true });
+    const res = await done;
+    expect(res).toEqual({ sent: 1, failed: 0, throttled: false });
+    expect(getCount()).toBe(1);
+    expect(getJSON(QUEUE_KEY, [])[0].body).toEqual({ n: 2 });
+  });
+
+  it('remueve de storage cada ítem apenas se entrega (no solo al final del pase)', async () => {
+    let resolveSecond;
+    apiPost.mockImplementationOnce(async () => ({ ok: true })); // 1º entrega
+    apiPost.mockImplementationOnce(() => new Promise((res) => { resolveSecond = res; })); // 2º en vuelo
+    enqueue(PATH, { n: 1 });
+    enqueue(PATH, { n: 2 });
+    const done = flush();
+    await vi.advanceTimersByTimeAsync(SPACING); // 1º enviado y removido, 2º en vuelo
+    expect(getCount()).toBe(1); // cerrar la pestaña aquí ya no reenvía el 1º
+    expect(getJSON(QUEUE_KEY, [])[0].body).toEqual({ n: 1 });
+    resolveSecond({ ok: true });
+    const res = await done;
+    expect(res.sent).toBe(2);
+    expect(getCount()).toBe(0);
+  });
+
+  it('la última notificación del pase llega con flushing ya en false', async () => {
+    // Regresión: el notify final vivía dentro de runFlush, antes del .finally
+    // que libera flushPromise → el último snapshot de los suscriptores quedó
+    // estancado en flushing=true.
+    apiPost.mockResolvedValue({ ok: true });
+    const flags = [];
+    subscribe(() => flags.push(getSnapshot().flushing));
+    enqueue(PATH, { n: 1 });
+    await flush();
+    expect(flags.length).toBeGreaterThan(0);
+    expect(flags[flags.length - 1]).toBe(false);
   });
 
   it('no ejecuta dos flushes concurrentes: devuelven la misma promesa', async () => {

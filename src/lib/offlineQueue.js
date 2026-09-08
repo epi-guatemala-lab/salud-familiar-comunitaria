@@ -79,7 +79,12 @@ export function enqueue(path, body) {
     body,
   };
   const next = [item, ...loadQueue()];
-  saveQueue(next);
+  if (!saveQueue(next)) {
+    // localStorage no pudo persistir (cuota llena): el ítem vive en el
+    // overlay en memoria de esta pestaña y el drenaje seguirá funcionando
+    // mientras no se cierre, pero no sobrevivirá a la sesión.
+    console.warn('[offlineQueue] la cola no se persistió (¿localStorage lleno?); el envío pendiente vive solo en esta pestaña');
+  }
   notify(next);
   return item;
 }
@@ -98,8 +103,14 @@ export function getSnapshot() {
   return { items: loadQueue(), isOnline, flushing: flushPromise !== null };
 }
 
+// Remueve UN ítem por id releyendo el storage vigente. Nunca se escribe la
+// cola completa desde el snapshot del pase: así un enqueue() concurrente
+// (misma pestaña u otra) no puede ser pisado.
+function removeById(id) {
+  saveQueue(loadQueue().filter((i) => i.id !== id));
+}
+
 async function runFlush(pending) {
-  const remaining = [];
   let sent = 0;
   let failed = 0;
   let throttled = false;
@@ -110,28 +121,30 @@ async function runFlush(pending) {
     try {
       await api.post(item.path, item.body, { auth: false, maxRetries: 1 });
       sent += 1;
+      // El avance se persiste ítem a ítem: cerrar la pestaña a mitad del
+      // pase ya no reenvía lo entregado (el dedup por uuid lo absorbía, pero
+      // quemaba la cuota 1/5 s por IP).
+      removeById(item.id);
     } catch (err) {
       const status = err?.status ?? 0;
       if (status >= 400 && status < 500 && status !== 408 && status !== 429) {
         // Error de validación: reintentar no tiene sentido, se descarta.
         failed += 1;
+        removeById(item.id);
         continue;
       }
-      // Transitorio (429/408/5xx/red): se conserva para el próximo pase...
-      remaining.push(item);
       if (status === 429) {
-        // ...y con 429 se aborta el pase completo: la IP está throttled y
-        // seguir enviaría requests que el backend rechazaría igual. Los
-        // ítems aún no intentados se conservan tal cual.
+        // La IP está throttled: abortar el pase completo. Este ítem y los
+        // aún no intentados quedan en storage tal cual para el próximo pase.
         throttled = true;
-        remaining.push(...pending.slice(i + 1));
         break;
       }
+      // Transitorio (408/5xx/red): se conserva en storage tal cual.
     }
   }
-  flushPromise = null;
-  saveQueue(remaining);
-  notify(remaining);
+  // Sin notify final aquí: lo emite flush() en el .finally, ya con
+  // flushPromise=null, para que el último snapshot de los suscriptores no
+  // quede estancado en flushing=true.
   return { sent, failed, throttled };
 }
 
@@ -143,7 +156,14 @@ export function flush() {
   if (pending.length === 0) {
     return Promise.resolve({ sent: 0, failed: 0, throttled: false });
   }
-  flushPromise = runFlush(pending);
+  // El guard se libera pase lo que pase: un runFlush que estallara por una
+  // vía no contemplada no dejaría la cola congelada hasta recargar. El
+  // notify va DESPUÉS de liberarlo: la última notificación del pase llega
+  // con flushing ya en false.
+  flushPromise = runFlush(pending).finally(() => {
+    flushPromise = null;
+    notify(loadQueue());
+  });
   notify(pending); // flushing pasó a true: reflejarlo en la UI
   return flushPromise;
 }

@@ -1,6 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { v4 as uuidv4 } from 'uuid';
 
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
@@ -18,7 +17,8 @@ import { useFormState } from '../../hooks/useFormState';
 import { useOfflineQueue } from '../../hooks/useOfflineQueue';
 import { useToast } from '../../contexts/ToastContext';
 import { STORAGE_KEYS } from '../../config/constants';
-import { safeGet, safeSet, safeRemove } from '../../lib/storage';
+import { safeRemove } from '../../lib/storage';
+import { resolveTabUuid } from '../../lib/tabUuid';
 import { calcKpisLocal } from '../../lib/format';
 import M from '../../config/messages';
 
@@ -42,14 +42,45 @@ export default function SatisfaccionPage() {
   const toast = useToast();
   const { enqueue, isOnline } = useOfflineQueue();
 
-  // UUID idempotente: persistido entre reloads para no duplicar envios.
-  const [uuid] = useState(() => {
-    const stored = safeGet(STORAGE_KEYS.ENCUESTA_UUID);
-    if (stored && /^[0-9a-f-]{36}$/.test(stored)) return stored;
-    const fresh = uuidv4();
-    safeSet(STORAGE_KEYS.ENCUESTA_UUID, fresh);
-    return fresh;
-  });
+  // UUID idempotente POR PESTAÑA (sessionStorage). La clave global de
+  // localStorage hacía que dos formularios abiertos a la vez compartieran
+  // uuid, y el backend (dedup por uuid) devolvía 201 con el registro de la
+  // primera: la segunda encuesta se perdía con un falso «enviada». El uuid
+  // se resuelve en un efecto (ver lib/tabUuid.js): sessionStorage se copia
+  // al duplicar la pestaña, así que hay un handshake por BroadcastChannel
+  // para detectar la copia heredada y renovarla; una recarga de esta misma
+  // pestaña conserva el uuid, que es la idempotencia que el reload necesita.
+  // onResolved puede disparar de nuevo si llega un conflicto tardío: el
+  // estado se actualiza y el envío usará el uuid vigente. Mientras resuelve
+  // (~150 ms) el botón de envío espera.
+  const [uuid, setUuid] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    safeRemove(STORAGE_KEYS.ENCUESTA_UUID); // limpieza de la clave legacy
+    resolveTabUuid({
+      read: () => {
+        try {
+          return sessionStorage.getItem(STORAGE_KEYS.ENCUESTA_UUID_TAB);
+        } catch {
+          return null; // Safari privado sin sessionStorage
+        }
+      },
+      write: (u) => {
+        try {
+          sessionStorage.setItem(STORAGE_KEYS.ENCUESTA_UUID_TAB, u);
+        } catch {
+          /* ídem: uuid vive solo en memoria */
+        }
+      },
+      onResolved: (u) => {
+        if (alive) setUuid(u);
+      },
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const initial = useMemo(() => makeInitial(uuid), [uuid]);
   const { formData, updateField, clearForm } = useFormState(STORAGE_KEYS.ENCUESTA_DRAFT, initial);
@@ -57,11 +88,6 @@ export default function SatisfaccionPage() {
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const formRef = useRef(null);
-
-  // Asegurar uuid persistido en cada montado.
-  useEffect(() => {
-    safeSet(STORAGE_KEYS.ENCUESTA_UUID, uuid);
-  }, [uuid]);
 
   // Progreso visual: % de items respondidos (sobre 18).
   const respondidos = ITEMS_18.filter((i) => formData[i.field] != null).length;
@@ -96,6 +122,10 @@ export default function SatisfaccionPage() {
   const buildPayload = () => {
     // Asegurar ints en items 1..5 (no string).
     const payload = { ...formData };
+    // El uuid de idempotencia es el de ESTA pestaña: un draft restaurado
+    // puede arrastrar el uuid de otra sesión/pestaña y el backend lo
+    // deduplicaría contra un registro ajeno.
+    payload.uuid = uuid;
     ITEMS_18.forEach((i) => {
       payload[i.field] = Number(payload[i.field]);
     });
@@ -112,12 +142,20 @@ export default function SatisfaccionPage() {
 
   const finishSuccess = (offlineQueued = false) => {
     clearForm();
-    safeRemove(STORAGE_KEYS.ENCUESTA_UUID);
+    // El uuid de esta pestaña ya se usó: fuera, para que «Llenar otra
+    // encuesta» en la MISMA pestaña genere uno nuevo.
+    try {
+      sessionStorage.removeItem(STORAGE_KEYS.ENCUESTA_UUID_TAB);
+    } catch {
+      /* noop */
+    }
+    safeRemove(STORAGE_KEYS.ENCUESTA_UUID); // clave legacy, por si quedó de antes
     navigate(`/satisfaccion/gracias${offlineQueued ? '?offline=1' : ''}`);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!uuid) return; // el handshake del uuid aún no resuelve: no enviar sin él
     const errs = validate();
     if (Object.keys(errs).length) {
       setErrors(errs);
@@ -145,11 +183,19 @@ export default function SatisfaccionPage() {
       finishSuccess(false);
     } catch (err) {
       const status = err?.status ?? 0;
-      // Errores de red o 5xx → encolar offline.
-      if (status === 0 || status >= 500 || err?.networkError) {
+      // Errores de red, 429 (rate limit 1/5 s por IP: dos pacientes en el
+      // mismo kiosco, o un drenaje de la cola cruzándose con este envío) o
+      // 5xx → encolar: el espaciado de 5,2 s del motor lo drena sin chocar.
+      if (status === 0 || status === 429 || status >= 500 || err?.networkError) {
         try {
           await enqueue('/api/encuesta', payload);
-          toast.warning('Sin conexión. Se enviará automáticamente al recuperar internet.');
+          if (status === 429) {
+            // Con 429 la red está sana: es el rate limit 1/5 s por IP (p. ej.
+            // dos pacientes en el mismo kiosco). No culpar a la conexión.
+            toast.warning('Servidor ocupado. Su encuesta quedará en cola y saldrá automáticamente en unos segundos.');
+          } else {
+            toast.warning('Sin conexión. Se enviará automáticamente al recuperar internet.');
+          }
           finishSuccess(true);
           return;
         } catch (_) {
@@ -303,6 +349,7 @@ export default function SatisfaccionPage() {
               fullWidth
               size="lg"
               loading={submitting}
+              disabled={!uuid}
               className="shadow-lg"
             >
               {submitting ? M.encuesta.btnEnviando : M.encuesta.btnEnviar}

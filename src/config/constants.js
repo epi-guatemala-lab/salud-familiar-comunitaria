@@ -30,7 +30,8 @@ export const STORAGE_KEYS = {
   USER: 'sfyc_user',
   OFFLINE_QUEUE: 'sfyc_offline_queue',
   ENCUESTA_DRAFT: 'sfyc_encuesta_draft',
-  ENCUESTA_UUID: 'sfyc_encuesta_uuid',
+  ENCUESTA_UUID: 'sfyc_encuesta_uuid', // legacy global: ya no se lee, solo se limpia
+  ENCUESTA_UUID_TAB: 'sfyc_encuesta_uuid_tab', // sessionStorage: uuid POR PESTAÑA
   UNIDADES_CACHE: 'sfyc_unidades_cache_v1',
 };
 

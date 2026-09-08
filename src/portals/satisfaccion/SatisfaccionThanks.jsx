@@ -22,6 +22,12 @@ export default function SatisfaccionThanks() {
   useEffect(() => {
     // Limpieza defensiva: en SatisfaccionPage también se hace, pero aquí
     // garantizamos que un usuario que llegue por URL directa también limpie.
+    // La clave de pestaña es sessionStorage: solo toca la de ESTA pestaña.
+    try {
+      sessionStorage.removeItem(STORAGE_KEYS.ENCUESTA_UUID_TAB);
+    } catch {
+      /* noop */
+    }
     try {
       safeRemove(STORAGE_KEYS.ENCUESTA_UUID);
     } catch {
@@ -50,7 +56,7 @@ export default function SatisfaccionThanks() {
 
           <p className="text-base text-gray-700 mb-6">
             {offline
-              ? 'Su encuesta se guardó localmente y se enviará automáticamente cuando se restablezca la conexión a internet.'
+              ? 'Su encuesta quedó en cola de envío y saldrá automáticamente en cuanto el sistema pueda recibirla.'
               : 'Su encuesta fue enviada exitosamente. Sus respuestas son anónimas y nos ayudan a mejorar la atención.'}
           </p>
 
