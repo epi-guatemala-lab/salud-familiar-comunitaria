@@ -1,87 +1,29 @@
-import { useState, useEffect, useCallback } from 'react';
-import { api } from '../lib/api';
-import { STORAGE_KEYS } from '../config/constants';
-import { getJSON, setJSON } from '../lib/storage';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  enqueue as enqueueItem,
+  flush as flushQueue,
+  getSnapshot,
+  subscribe,
+} from '../lib/offlineQueue';
 
-const QUEUE_KEY = STORAGE_KEYS.OFFLINE_QUEUE;
-const MAX_ITEMS = 50;
-const TTL_MS = 24 * 3600 * 1000; // 24h
-
-function loadQueue() {
-  const items = getJSON(QUEUE_KEY, []);
-  if (!Array.isArray(items)) return [];
-  const now = Date.now();
-  return items.filter((i) => i && typeof i.ts === 'number' && now - i.ts < TTL_MS);
-}
-
-function saveQueue(items) {
-  setJSON(QUEUE_KEY, items.slice(0, MAX_ITEMS));
-}
-
+// Adaptador del motor lib/offlineQueue para la UI. La lógica (persistencia,
+// drenaje, rate limit, listeners de red) vive en el módulo y la dispara
+// <OfflineQueueSync/> montado una sola vez en App; este hook solo refleja su
+// estado, sin registrar listeners propios (evita el doble drenaje de antes).
 export function useOfflineQueue() {
-  const [items, setItems] = useState(loadQueue);
-  const [isOnline, setIsOnline] = useState(
-    typeof navigator !== 'undefined' ? navigator.onLine : true
-  );
-  const [flushing, setFlushing] = useState(false);
-
-  const flush = useCallback(async () => {
-    const pending = loadQueue();
-    if (pending.length === 0) {
-      setItems([]);
-      return { sent: 0, failed: 0 };
-    }
-    setFlushing(true);
-    const remaining = [];
-    let sent = 0;
-    let failed = 0;
-    for (const item of pending) {
-      try {
-        await api.post(item.path, item.body, { auth: false, maxRetries: 1 });
-        sent += 1;
-      } catch (err) {
-        const status = err?.status ?? 0;
-        if (status >= 400 && status < 500 && status !== 408 && status !== 429) {
-          // Error de validacion: drop (no tiene sentido reintentar)
-          failed += 1;
-          continue;
-        }
-        // Error transitorio: dejar en cola
-        remaining.push(item);
-      }
-    }
-    setItems(remaining);
-    saveQueue(remaining);
-    setFlushing(false);
-    return { sent, failed };
-  }, []);
+  const [snapshot, setSnapshot] = useState(getSnapshot);
 
   useEffect(() => {
-    const onlineHandler = () => {
-      setIsOnline(true);
-      flush();
-    };
-    const offlineHandler = () => setIsOnline(false);
-    window.addEventListener('online', onlineHandler);
-    window.addEventListener('offline', offlineHandler);
-    return () => {
-      window.removeEventListener('online', onlineHandler);
-      window.removeEventListener('offline', offlineHandler);
-    };
-  }, [flush]);
-
-  const enqueue = useCallback(async (path, body) => {
-    const item = {
-      id: Math.random().toString(36).slice(2),
-      ts: Date.now(),
-      path,
-      body,
-    };
-    const newItems = [item, ...loadQueue()];
-    setItems(newItems);
-    saveQueue(newItems);
-    return item;
+    const unsubscribe = subscribe(() => setSnapshot(getSnapshot()));
+    // Re-leer al montar: la cola pudo cambiar entre el primer render y aquí.
+    setSnapshot(getSnapshot());
+    return unsubscribe;
   }, []);
 
-  return { items, count: items.length, isOnline, flushing, enqueue, flush };
+  // enqueue conserva la firma async del contrato original del hook.
+  const enqueue = useCallback(async (path, body) => enqueueItem(path, body), []);
+  const flush = useCallback(() => flushQueue(), []);
+
+  const { items } = snapshot;
+  return { items, count: items.length, isOnline: snapshot.isOnline, flushing: snapshot.flushing, enqueue, flush };
 }
